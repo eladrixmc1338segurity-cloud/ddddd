@@ -1,0 +1,126 @@
+.navbar {
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+  color: white;
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: var(--shadow);
+  animation: slideDown 0.6s ease-out;
+  border-bottom: 3px solid var(--border-color);
+}
+
+.navbar-brand h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.navbar-content {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+}
+
+.admin-badge {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid white;
+}
+
+.navbar-links {
+  display: flex;
+  gap: 1rem;
+}
+
+.btn-nav-login,
+.btn-nav-register,
+.btn-nav-admin,
+.btn-nav-logout {
+  padding: 0.6rem 1.2rem;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.95rem;
+}
+
+.btn-nav-login {
+  background: transparent;
+  color: white;
+}
+
+.btn-nav-login:hover {
+  background: rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+.btn-nav-register,
+.btn-nav-admin {
+  background: white;
+  color: var(--primary-blue);
+}
+
+.btn-nav-register:hover,
+.btn-nav-admin:hover {
+  background: var(--light-blue);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn-nav-logout {
+  background: rgba(0, 0, 0, 0.2);
+  color: white;
+  border-color: white;
+}
+
+.btn-nav-logout:hover {
+  background: rgba(0, 0, 0, 0.4);
+  transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+  .navbar {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .navbar-brand h1 {
+    font-size: 1.4rem;
+  }
+
+  .navbar-content {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .navbar-user {
+    gap: 0.5rem;
+    font-size: 0.9rem;
+  }
+
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+  }
+}

@@ -1,0 +1,297 @@
+.admin-panel {
+  min-height: calc(100vh - 80px);
+  padding: 2rem;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e3f2fd 100%);
+}
+
+.admin-header {
+  text-align: center;
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 3px solid var(--border-color);
+}
+
+.admin-header h1 {
+  color: var(--primary-blue);
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.admin-header p {
+  color: var(--text-light);
+  font-size: 1.1rem;
+}
+
+.admin-access-denied {
+  min-height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.admin-access-denied h2 {
+  color: #d32f2f;
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 1rem;
+}
+
+.tab-btn {
+  padding: 0.8rem 1.5rem;
+  background: white;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-dark);
+  transition: all 0.3s ease;
+  font-size: 1rem;
+}
+
+.tab-btn:hover {
+  background: var(--light-blue);
+  transform: translateY(-2px);
+}
+
+.tab-btn.active {
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--accent-blue) 100%);
+  color: white;
+  border-color: var(--primary-blue);
+}
+
+.admin-content {
+  background: white;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: var(--shadow);
+}
+
+.maps-management h2,
+.users-management h2 {
+  color: var(--primary-blue);
+  margin-bottom: 2rem;
+  font-size: 1.8rem;
+}
+
+.upload-section {
+  background: var(--light-blue);
+  padding: 2rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  border: 2px dashed var(--primary-blue);
+}
+
+.upload-section h3 {
+  color: var(--primary-blue);
+  margin-bottom: 1rem;
+}
+
+.upload-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.upload-form input,
+.upload-form textarea,
+.upload-form select {
+  padding: 0.75rem;
+  border: 2px solid var(--primary-blue);
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+.upload-form textarea {
+  grid-column: 1 / -1;
+  resize: vertical;
+  min-height: 100px;
+}
+
+.upload-form input:focus,
+.upload-form textarea:focus,
+.upload-form select:focus {
+  outline: none;
+  border-color: var(--dark-blue);
+  box-shadow: 0 0 0 3px rgba(0, 85, 204, 0.1);
+}
+
+.btn-upload {
+  grid-column: 1 / -1;
+  padding: 0.9rem;
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--accent-blue) 100%);
+  color: white;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+}
+
+.btn-upload:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-hover);
+}
+
+.maps-list {
+  margin-top: 2rem;
+}
+
+.maps-list h3,
+.users-management h3 {
+  color: var(--primary-blue);
+  margin-bottom: 1rem;
+  font-size: 1.3rem;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.admin-table thead {
+  background: var(--light-blue);
+  border-bottom: 2px solid var(--border-color);
+}
+
+.admin-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 700;
+  color: var(--primary-blue);
+}
+
+.admin-table td {
+  padding: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.admin-table tbody tr:hover {
+  background: var(--light-blue);
+}
+
+.role-badge,
+.status-badge {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: 1px solid;
+}
+
+.role-badge.admin {
+  background: #ffebee;
+  color: #c62828;
+  border-color: #c62828;
+}
+
+.role-badge.user {
+  background: #e3f2fd;
+  color: var(--primary-blue);
+  border-color: var(--primary-blue);
+}
+
+.status-badge.active {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-color: #2e7d32;
+}
+
+.status-badge.inactive {
+  background: #fce4ec;
+  color: #c2185b;
+  border-color: #c2185b;
+}
+
+.btn-action-delete,
+.btn-action-promote,
+.btn-action-deactivate {
+  padding: 0.5rem 1rem;
+  border: 2px solid;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.85rem;
+  margin: 0 0.25rem;
+  text-transform: uppercase;
+}
+
+.btn-action-delete {
+  background: #ffebee;
+  color: #c62828;
+  border-color: #c62828;
+}
+
+.btn-action-delete:hover {
+  background: #c62828;
+  color: white;
+}
+
+.btn-action-promote {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-color: #2e7d32;
+}
+
+.btn-action-promote:hover {
+  background: #2e7d32;
+  color: white;
+}
+
+.btn-action-deactivate {
+  background: #fff3e0;
+  color: #f57c00;
+  border-color: #f57c00;
+}
+
+.btn-action-deactivate:hover {
+  background: #f57c00;
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .admin-panel {
+    padding: 1rem;
+  }
+
+  .admin-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .admin-content {
+    padding: 1rem;
+  }
+
+  .upload-form {
+    grid-template-columns: 1fr;
+  }
+
+  .upload-form textarea {
+    grid-column: 1;
+  }
+
+  .admin-table {
+    font-size: 0.85rem;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    padding: 0.75rem 0.5rem;
+  }
+}
