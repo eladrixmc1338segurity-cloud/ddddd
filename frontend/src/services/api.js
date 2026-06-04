@@ -78,3 +78,28 @@ export const updateMonetization = (data) => {
 export const updateProfile = (data) => {
   return axios.put(`${API_URL}/auth/profile`, data);
 };
+
+// Claves de admin
+export const verifyAdminKey = (key) => {
+  return axios.post(`${API_URL}/admin-keys/verify`, { key });
+};
+
+export const getAdminKeys = () => {
+  return axios.get(`${API_URL}/admin-keys`);
+};
+
+export const getAccessLog = () => {
+  return axios.get(`${API_URL}/admin-keys/log`);
+};
+
+export const assignAdminKey = (userId) => {
+  return axios.post(`${API_URL}/admin-keys/assign`, { userId });
+};
+
+export const regenerateAdminKey = (userId) => {
+  return axios.put(`${API_URL}/admin-keys/regenerate/${userId}`);
+};
+
+export const revokeAdminKey = (userId) => {
+  return axios.delete(`${API_URL}/admin-keys/revoke/${userId}`);
+};

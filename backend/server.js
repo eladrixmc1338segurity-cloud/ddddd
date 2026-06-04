@@ -97,6 +97,35 @@ db.serialize(() => {
     if (!err) console.log('✅ Tabla permisos creada');
   });
 
+  // Tabla de claves secretas de administrador
+  db.run(`
+    CREATE TABLE IF NOT EXISTS admin_keys (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL UNIQUE,
+      keyHash TEXT NOT NULL,
+      isRevoked BOOLEAN DEFAULT 0,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (userId) REFERENCES users(id)
+    )
+  `, (err) => {
+    if (!err) console.log('✅ Tabla claves de admin creada');
+  });
+
+  // Tabla de log de accesos al panel admin
+  db.run(`
+    CREATE TABLE IF NOT EXISTS access_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL,
+      ip TEXT,
+      success BOOLEAN NOT NULL,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (userId) REFERENCES users(id)
+    )
+  `, (err) => {
+    if (!err) console.log('✅ Tabla log de accesos creada');
+  });
+
   // Tabla de monetización (enlaces de donación/compra y banner)
   db.run(`
     CREATE TABLE IF NOT EXISTS monetization (
@@ -119,20 +148,25 @@ db.serialize(() => {
     }
   });
 
-  // Crear usuario administrador por defecto si no existe
+  // Crear/actualizar Owner (administrador principal)
   const adminEmail = process.env.ADMIN_EMAIL;
   const adminPassword = process.env.ADMIN_PASSWORD;
   if (adminEmail && adminPassword) {
-    db.get('SELECT id FROM users WHERE email = ?', [adminEmail], async (err, row) => {
+    db.get('SELECT id, role FROM users WHERE email = ?', [adminEmail], async (err, row) => {
       if (!err && !row) {
         const hashed = await bcrypt.hash(adminPassword, 10);
         db.run(
           'INSERT INTO users (email, username, password, role) VALUES (?, ?, ?, ?)',
-          [adminEmail, 'admin', hashed, 'admin'],
+          [adminEmail, 'admin', hashed, 'owner'],
           (insErr) => {
-            if (!insErr) console.log('✅ Usuario administrador por defecto creado:', adminEmail);
+            if (!insErr) console.log('✅ Owner (administrador principal) creado:', adminEmail);
           }
         );
+      } else if (!err && row && row.role !== 'owner') {
+        // Ascender a owner si ya existía como admin/user
+        db.run('UPDATE users SET role = ? WHERE id = ?', ['owner', row.id], (upErr) => {
+          if (!upErr) console.log('✅ Usuario ascendido a Owner:', adminEmail);
+        });
       }
     });
   }
@@ -155,6 +189,7 @@ const mapRoutes = require('./routes/maps');
 const userRoutes = require('./routes/users');
 const statsRoutes = require('./routes/stats');
 const monetizationRoutes = require('./routes/monetization');
+const adminKeysRoutes = require('./routes/adminKeys');
 
 // Rutas
 app.use('/api/auth', authRoutes);
@@ -162,6 +197,7 @@ app.use('/api/maps', mapRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/monetization', monetizationRoutes);
+app.use('/api/admin-keys', adminKeysRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
