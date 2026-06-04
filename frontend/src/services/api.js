@@ -40,6 +40,10 @@ export const getUserById = (id) => {
   return axios.get(`${API_URL}/users/${id}`);
 };
 
+export const getUserPermissions = (id) => {
+  return axios.get(`${API_URL}/users/${id}/permissions`);
+};
+
 export const updateUserPermissions = (id, permissions) => {
   return axios.put(`${API_URL}/users/${id}/permissions`, { permissions });
 };
@@ -50,6 +54,10 @@ export const updateUserRole = (id, role) => {
 
 export const deactivateUser = (id) => {
   return axios.put(`${API_URL}/users/${id}/deactivate`);
+};
+
+export const activateUser = (id) => {
+  return axios.put(`${API_URL}/users/${id}/activate`);
 };
 
 // Estadísticas públicas

@@ -1,16 +1,33 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import {
   getAllUsers,
   getAllMaps,
   updateUserRole,
   deactivateUser,
+  activateUser,
+  getUserPermissions,
+  updateUserPermissions,
   deleteMap,
   createMap,
   getMonetization,
   updateMonetization
 } from '../services/api';
 import '../styles/admin.css';
+
+const PERMISSION_LABELS = {
+  canUploadMaps: 'Subir recursos',
+  canDeleteMaps: 'Eliminar recursos',
+  canEditUsers: 'Editar usuarios',
+  canManageChannels: 'Gestionar canales'
+};
+
+const emptyPermissions = {
+  canUploadMaps: false,
+  canDeleteMaps: false,
+  canEditUsers: false,
+  canManageChannels: false
+};
 
 const emptyMonetization = {
   paypalUrl: '',
@@ -41,6 +58,12 @@ const AdminPanel = () => {
   const [monetization, setMonetization] = useState(emptyMonetization);
   const [monetizationMsg, setMonetizationMsg] = useState('');
   const [savingMonetization, setSavingMonetization] = useState(false);
+
+  const [permsUserId, setPermsUserId] = useState(null);
+  const [permsData, setPermsData] = useState(emptyPermissions);
+  const [permsMsg, setPermsMsg] = useState('');
+  const [savingPerms, setSavingPerms] = useState(false);
+  const latestPermsRequest = useRef(null);
 
   useEffect(() => {
     if (activeTab === 'maps') {
@@ -115,23 +138,62 @@ const AdminPanel = () => {
     }
   };
 
-  const handlePromoteUser = async (userId) => {
+  const handleChangeRole = async (userId, role) => {
     try {
-      await updateUserRole(userId, 'admin');
+      await updateUserRole(userId, role);
       fetchUsers();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Error al cambiar el rol');
+    }
+  };
+
+  const handleToggleActive = async (u) => {
+    try {
+      if (u.isActive) {
+        await deactivateUser(u.id);
+      } else {
+        await activateUser(u.id);
+      }
+      fetchUsers();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Error al cambiar el estado');
+    }
+  };
+
+  const openPermissions = async (userId) => {
+    if (permsUserId === userId) {
+      setPermsUserId(null);
+      latestPermsRequest.current = null;
+      return;
+    }
+    setPermsMsg('');
+    setPermsUserId(userId);
+    setPermsData(emptyPermissions);
+    latestPermsRequest.current = userId;
+    try {
+      const response = await getUserPermissions(userId);
+      // Ignorar respuestas obsoletas si el admin abrió otro usuario mientras tanto
+      if (latestPermsRequest.current !== userId) return;
+      setPermsData({ ...emptyPermissions, ...response.data.permissions });
     } catch (error) {
       console.error('Error:', error);
     }
   };
 
-  const handleDeactivateUser = async (userId) => {
-    if (window.confirm('¿Estás seguro?')) {
-      try {
-        await deactivateUser(userId);
-        fetchUsers();
-      } catch (error) {
-        console.error('Error:', error);
-      }
+  const handlePermChange = (field) => {
+    setPermsData(prev => ({ ...prev, [field]: !prev[field] }));
+  };
+
+  const handleSavePermissions = async () => {
+    setSavingPerms(true);
+    setPermsMsg('');
+    try {
+      await updateUserPermissions(permsUserId, permsData);
+      setPermsMsg('✅ Permisos guardados');
+    } catch (error) {
+      setPermsMsg('❌ ' + (error.response?.data?.message || 'Error al guardar'));
+    } finally {
+      setSavingPerms(false);
     }
   };
 
@@ -196,7 +258,7 @@ const AdminPanel = () => {
           className={`tab-btn ${activeTab === 'maps' ? 'active' : ''}`}
           onClick={() => setActiveTab('maps')}
         >
-          📦 Gestionar Mapas
+          📦 Gestión
         </button>
         <button
           className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
@@ -327,20 +389,65 @@ const AdminPanel = () => {
                       </td>
                       <td>{u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : 'N/A'}</td>
                       <td>
-                        {u.role !== 'admin' && (
+                        <div className="user-actions">
+                          {u.role === 'admin' ? (
+                            u.id !== user.id && (
+                              <button
+                                className="btn-action-demote"
+                                onClick={() => handleChangeRole(u.id, 'user')}
+                              >
+                                Quitar admin
+                              </button>
+                            )
+                          ) : (
+                            <button
+                              className="btn-action-promote"
+                              onClick={() => handleChangeRole(u.id, 'admin')}
+                            >
+                              Promover a admin
+                            </button>
+                          )}
+                          {u.id !== user.id && (
+                            <button
+                              className={u.isActive ? 'btn-action-deactivate' : 'btn-action-activate'}
+                              onClick={() => handleToggleActive(u)}
+                            >
+                              {u.isActive ? 'Desactivar' : 'Activar'}
+                            </button>
+                          )}
                           <button
-                            className="btn-action-promote"
-                            onClick={() => handlePromoteUser(u.id)}
+                            className="btn-action-perms"
+                            onClick={() => openPermissions(u.id)}
                           >
-                            Promover
+                            {permsUserId === u.id ? 'Cerrar permisos' : 'Permisos'}
                           </button>
+                        </div>
+
+                        {permsUserId === u.id && (
+                          <div className="perms-panel">
+                            <h4>Permisos de {u.username}</h4>
+                            <div className="perms-grid">
+                              {Object.keys(PERMISSION_LABELS).map(field => (
+                                <label key={field} className="checkbox-label">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!permsData[field]}
+                                    onChange={() => handlePermChange(field)}
+                                  />
+                                  {PERMISSION_LABELS[field]}
+                                </label>
+                              ))}
+                            </div>
+                            {permsMsg && <div className="perms-msg">{permsMsg}</div>}
+                            <button
+                              className="btn-upload"
+                              onClick={handleSavePermissions}
+                              disabled={savingPerms}
+                            >
+                              {savingPerms ? 'Guardando...' : 'Guardar permisos'}
+                            </button>
+                          </div>
                         )}
-                        <button
-                          className="btn-action-deactivate"
-                          onClick={() => handleDeactivateUser(u.id)}
-                        >
-                          Desactivar
-                        </button>
                       </td>
                     </tr>
                   ))}

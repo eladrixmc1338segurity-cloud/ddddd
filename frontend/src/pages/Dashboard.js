@@ -1,6 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AuthContext } from '../context/AuthContext';
+import React, { useState, useEffect } from 'react';
 import { getAllMaps } from '../services/api';
 import '../styles/dashboard.css';
 
@@ -43,8 +41,6 @@ const CHANNELS = [
 ];
 
 const Dashboard = () => {
-  const { user } = useContext(AuthContext);
-  const navigate = useNavigate();
   const [selectedChannel, setSelectedChannel] = useState('mapas');
   const [maps, setMaps] = useState([]);
   const [loading, setLoading] = useState(false);

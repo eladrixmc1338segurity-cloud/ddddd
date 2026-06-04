@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
 
+const PERMISSION_FIELDS = ['canUploadMaps', 'canDeleteMaps', 'canEditUsers', 'canManageChannels'];
+
 // GET - Obtener todos los usuarios (solo admin)
 router.get('/', protect, authorize('admin'), (req, res) => {
   const db = req.app.locals.db;
@@ -32,6 +34,14 @@ router.put('/:id/role', protect, authorize('admin'), (req, res) => {
     });
   }
 
+  // Evitar que un admin se quite a sí mismo el rol y se quede sin acceso
+  if (Number(id) === Number(req.user.id) && role !== 'admin') {
+    return res.status(400).json({
+      success: false,
+      message: 'No puedes quitarte el rol de administrador a ti mismo'
+    });
+  }
+
   db.run('UPDATE users SET role = ? WHERE id = ?', [role, id], function(err) {
     if (err) {
       return res.status(500).json({ success: false, message: err.message });
@@ -39,7 +49,7 @@ router.put('/:id/role', protect, authorize('admin'), (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: 'Rol actualizado'
+      message: role === 'admin' ? 'Usuario promovido a administrador' : 'Administrador degradado a usuario'
     });
   });
 });
@@ -48,6 +58,13 @@ router.put('/:id/role', protect, authorize('admin'), (req, res) => {
 router.put('/:id/deactivate', protect, authorize('admin'), (req, res) => {
   const { id } = req.params;
   const db = req.app.locals.db;
+
+  if (Number(id) === Number(req.user.id)) {
+    return res.status(400).json({
+      success: false,
+      message: 'No puedes desactivar tu propia cuenta'
+    });
+  }
 
   db.run('UPDATE users SET isActive = 0 WHERE id = ?', [id], function(err) {
     if (err) {
@@ -58,6 +75,82 @@ router.put('/:id/deactivate', protect, authorize('admin'), (req, res) => {
       success: true,
       message: 'Usuario desactivado'
     });
+  });
+});
+
+// PUT - Reactivar usuario (solo admin)
+router.put('/:id/activate', protect, authorize('admin'), (req, res) => {
+  const { id } = req.params;
+  const db = req.app.locals.db;
+
+  db.run('UPDATE users SET isActive = 1 WHERE id = ?', [id], function(err) {
+    if (err) {
+      return res.status(500).json({ success: false, message: err.message });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Usuario activado'
+    });
+  });
+});
+
+// GET - Obtener permisos de un usuario (solo admin)
+router.get('/:id/permissions', protect, authorize('admin'), (req, res) => {
+  const { id } = req.params;
+  const db = req.app.locals.db;
+
+  db.get('SELECT * FROM permissions WHERE userId = ?', [id], (err, row) => {
+    if (err) {
+      return res.status(500).json({ success: false, message: err.message });
+    }
+
+    const permissions = {};
+    PERMISSION_FIELDS.forEach(field => {
+      permissions[field] = row ? !!row[field] : false;
+    });
+
+    res.status(200).json({ success: true, permissions });
+  });
+});
+
+// PUT - Actualizar permisos de un usuario (solo admin)
+router.put('/:id/permissions', protect, authorize('admin'), (req, res) => {
+  const { id } = req.params;
+  const { permissions } = req.body;
+  const db = req.app.locals.db;
+
+  if (!permissions || typeof permissions !== 'object') {
+    return res.status(400).json({ success: false, message: 'Permisos no válidos' });
+  }
+
+  const values = PERMISSION_FIELDS.map(field => (permissions[field] ? 1 : 0));
+
+  db.get('SELECT id FROM permissions WHERE userId = ?', [id], (err, row) => {
+    if (err) {
+      return res.status(500).json({ success: false, message: err.message });
+    }
+
+    const done = (uErr) => {
+      if (uErr) {
+        return res.status(500).json({ success: false, message: uErr.message });
+      }
+      res.status(200).json({ success: true, message: 'Permisos actualizados' });
+    };
+
+    if (row) {
+      db.run(
+        `UPDATE permissions SET ${PERMISSION_FIELDS.map(f => `${f} = ?`).join(', ')} WHERE userId = ?`,
+        [...values, id],
+        done
+      );
+    } else {
+      db.run(
+        `INSERT INTO permissions (userId, ${PERMISSION_FIELDS.join(', ')}) VALUES (?, ${PERMISSION_FIELDS.map(() => '?').join(', ')})`,
+        [id, ...values],
+        done
+      );
+    }
   });
 });
 
