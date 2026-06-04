@@ -11,7 +11,13 @@ import {
   deleteMap,
   createMap,
   getMonetization,
-  updateMonetization
+  updateMonetization,
+  verifyAdminKey,
+  getAdminKeys,
+  getAccessLog,
+  assignAdminKey,
+  regenerateAdminKey,
+  revokeAdminKey
 } from '../services/api';
 import '../styles/admin.css';
 
@@ -65,6 +71,18 @@ const AdminPanel = () => {
   const [savingPerms, setSavingPerms] = useState(false);
   const latestPermsRequest = useRef(null);
 
+  // Verificación de clave secreta (solo admins, no owner)
+  const [keyVerified, setKeyVerified] = useState(false);
+  const [keyInput, setKeyInput] = useState('');
+  const [keyError, setKeyError] = useState('');
+  const [keyLoading, setKeyLoading] = useState(false);
+
+  // Claves de admins (solo owner)
+  const [adminsList, setAdminsList] = useState([]);
+  const [accessLog, setAccessLog] = useState([]);
+  const [newKeyResult, setNewKeyResult] = useState(null);
+  const [keysLoading, setKeysLoading] = useState(false);
+
   useEffect(() => {
     if (activeTab === 'maps') {
       fetchMaps();
@@ -72,8 +90,77 @@ const AdminPanel = () => {
       fetchUsers();
     } else if (activeTab === 'monetization') {
       fetchMonetization();
+    } else if (activeTab === 'keys') {
+      fetchAdminKeys();
+      fetchAccessLog();
     }
   }, [activeTab]);
+
+  const handleVerifyKey = async () => {
+    setKeyLoading(true);
+    setKeyError('');
+    try {
+      await verifyAdminKey(keyInput);
+      setKeyVerified(true);
+    } catch (error) {
+      setKeyError(error.response?.data?.message || 'Error al verificar la clave');
+    } finally {
+      setKeyLoading(false);
+    }
+  };
+
+  const fetchAdminKeys = async () => {
+    setKeysLoading(true);
+    try {
+      const response = await getAdminKeys();
+      setAdminsList(response.data.admins || []);
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setKeysLoading(false);
+    }
+  };
+
+  const fetchAccessLog = async () => {
+    try {
+      const response = await getAccessLog();
+      setAccessLog(response.data.log || []);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  const handleAssignKey = async (userId) => {
+    try {
+      const response = await assignAdminKey(userId);
+      setNewKeyResult({ key: response.data.key, username: response.data.username });
+      fetchAdminKeys();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Error al asignar clave');
+    }
+  };
+
+  const handleRegenerateKey = async (userId) => {
+    if (!window.confirm('¿Regenerar la clave? La anterior dejará de funcionar.')) return;
+    try {
+      const response = await regenerateAdminKey(userId);
+      setNewKeyResult({ key: response.data.key, username: response.data.username });
+      fetchAdminKeys();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Error al regenerar clave');
+    }
+  };
+
+  const handleRevokeKey = async (userId) => {
+    if (!window.confirm('¿Revocar la clave? El admin no podrá entrar al panel.')) return;
+    try {
+      await revokeAdminKey(userId);
+      setNewKeyResult(null);
+      fetchAdminKeys();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Error al revocar clave');
+    }
+  };
 
   const fetchMaps = async () => {
     setLoading(true);
@@ -237,11 +324,42 @@ const AdminPanel = () => {
     }
   };
 
-  if (user?.role !== 'admin') {
+  if (user?.role !== 'admin' && user?.role !== 'owner') {
     return (
       <div className="admin-access-denied">
         <h2>Acceso Denegado</h2>
         <p>No tienes permisos para acceder al panel de administrador</p>
+      </div>
+    );
+  }
+
+  // Admins (no owner) necesitan verificar su clave secreta
+  if (user?.role === 'admin' && !keyVerified) {
+    return (
+      <div className="admin-panel fade-in">
+        <div className="admin-header">
+          <h1>🔐 Verificación de Seguridad</h1>
+          <p>Introduce tu clave secreta de administrador para acceder al panel</p>
+        </div>
+        <div className="key-verify-box">
+          <input
+            type="password"
+            placeholder="Clave secreta..."
+            value={keyInput}
+            onChange={(e) => setKeyInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleVerifyKey()}
+            className="key-input"
+          />
+          <button
+            className="btn-upload"
+            onClick={handleVerifyKey}
+            disabled={keyLoading || !keyInput}
+          >
+            {keyLoading ? 'Verificando...' : 'Acceder al panel'}
+          </button>
+          {keyError && <div className="key-error">{keyError}</div>}
+          <p className="key-help">Si no tienes clave, contacta con el Owner del sistema.</p>
+        </div>
       </div>
     );
   }
@@ -271,6 +389,12 @@ const AdminPanel = () => {
           onClick={() => setActiveTab('monetization')}
         >
           💰 Monetización
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'keys' ? 'active' : ''}`}
+          onClick={() => setActiveTab('keys')}
+        >
+          🔑 Claves de Admins
         </button>
       </div>
 
@@ -577,6 +701,144 @@ const AdminPanel = () => {
                 {savingMonetization ? 'Guardando...' : 'Guardar configuración'}
               </button>
             </form>
+          </div>
+        )}
+
+        {activeTab === 'keys' && (
+          <div className="keys-management">
+            <h2>🔑 Claves de Admins</h2>
+
+            {user?.role !== 'owner' ? (
+              <div className="keys-no-access">
+                <h3>🚫 No tienes acceso a este panel</h3>
+                <p>Solo el Owner (Administrador Principal) puede gestionar las claves secretas.</p>
+              </div>
+            ) : (
+              <>
+                {newKeyResult && (
+                  <div className="key-result-box">
+                    <h3>🔐 Clave generada para: {newKeyResult.username}</h3>
+                    <div className="key-display">
+                      <code>{newKeyResult.key}</code>
+                    </div>
+                    <p className="key-warning">
+                      ⚠️ Copia esta clave y envíasela al administrador. <strong>No se volverá a mostrar.</strong>
+                    </p>
+                    <button className="btn-action-promote" onClick={() => setNewKeyResult(null)}>
+                      Entendido, cerrar
+                    </button>
+                  </div>
+                )}
+
+                <div className="keys-section">
+                  <h3>Administradores y sus claves</h3>
+                  {keysLoading ? (
+                    <p>Cargando...</p>
+                  ) : adminsList.length > 0 ? (
+                    <table className="admin-table">
+                      <thead>
+                        <tr>
+                          <th>Usuario</th>
+                          <th>Email</th>
+                          <th>Rol</th>
+                          <th>Estado de clave</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {adminsList.map(a => (
+                          <tr key={a.id}>
+                            <td>{a.username}</td>
+                            <td>{a.email}</td>
+                            <td>
+                              <span className={`role-badge ${a.role}`}>
+                                {a.role === 'owner' ? 'OWNER' : 'ADMIN'}
+                              </span>
+                            </td>
+                            <td>
+                              {a.role === 'owner' ? (
+                                <span className="status-badge active">No necesita clave</span>
+                              ) : !a.keyId ? (
+                                <span className="status-badge inactive">Sin clave</span>
+                              ) : a.isRevoked ? (
+                                <span className="status-badge inactive">Revocada</span>
+                              ) : (
+                                <span className="status-badge active">Activa</span>
+                              )}
+                            </td>
+                            <td>
+                              {a.role !== 'owner' && (
+                                <div className="user-actions">
+                                  {!a.keyId || a.isRevoked ? (
+                                    <button
+                                      className="btn-action-promote"
+                                      onClick={() => handleAssignKey(a.id)}
+                                    >
+                                      Crear clave
+                                    </button>
+                                  ) : (
+                                    <>
+                                      <button
+                                        className="btn-action-promote"
+                                        onClick={() => handleRegenerateKey(a.id)}
+                                      >
+                                        Regenerar
+                                      </button>
+                                      <button
+                                        className="btn-action-deactivate"
+                                        onClick={() => handleRevokeKey(a.id)}
+                                      >
+                                        Revocar
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p>No hay administradores</p>
+                  )}
+                </div>
+
+                <div className="keys-section">
+                  <h3>📋 Registro de accesos (últimos 100)</h3>
+                  {accessLog.length > 0 ? (
+                    <table className="admin-table access-log-table">
+                      <thead>
+                        <tr>
+                          <th>Fecha</th>
+                          <th>Usuario</th>
+                          <th>Email</th>
+                          <th>IP</th>
+                          <th>Resultado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {accessLog.map(entry => (
+                          <tr key={entry.id}>
+                            <td>{new Date(entry.createdAt).toLocaleString()}</td>
+                            <td>{entry.username}</td>
+                            <td>{entry.email}</td>
+                            <td>{entry.ip || 'N/A'}</td>
+                            <td>
+                              <span className={`status-badge ${entry.success ? 'active' : 'inactive'}`}>
+                                {entry.success ? 'Correcto' : 'Fallido'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p>No hay registros de acceso todavía</p>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

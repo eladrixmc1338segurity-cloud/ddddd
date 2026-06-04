@@ -30,6 +30,8 @@ exports.protect = async (req, res, next) => {
 
 exports.authorize = (...roles) => {
   return (req, res, next) => {
+    // Owner siempre tiene acceso a rutas de admin
+    if (req.user.role === 'owner') return next();
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
@@ -38,4 +40,14 @@ exports.authorize = (...roles) => {
     }
     next();
   };
+};
+
+exports.authorizeOwner = (req, res, next) => {
+  if (req.user.role !== 'owner') {
+    return res.status(403).json({
+      success: false,
+      message: 'Solo el Owner puede realizar esta acción'
+    });
+  }
+  next();
 };

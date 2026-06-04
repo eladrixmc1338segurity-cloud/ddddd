@@ -63,7 +63,9 @@ const Navbar = () => {
             }}
           />
           <span>{user.username}</span>
-          {user.role === 'admin' && <span className="admin-badge">ADMIN</span>}
+          {(user.role === 'admin' || user.role === 'owner') && (
+            <span className="admin-badge">{user.role === 'owner' ? 'OWNER' : 'ADMIN'}</span>
+          )}
         </div>
         <div className="navbar-links">
           <button onClick={() => navigate('/dashboard')} className="btn-nav-login">
@@ -72,7 +74,7 @@ const Navbar = () => {
           <button onClick={() => navigate('/profile')} className="btn-nav-register">
             Mi Perfil
           </button>
-          {user.role === 'admin' && (
+          {(user.role === 'admin' || user.role === 'owner') && (
             <button onClick={() => navigate('/admin')} className="btn-nav-admin">
               Panel Admin
             </button>

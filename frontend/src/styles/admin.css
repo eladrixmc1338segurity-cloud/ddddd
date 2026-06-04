@@ -454,3 +454,131 @@
 .btn-add-link:hover {
   background: var(--light-blue);
 }
+
+/* Verificación de clave secreta */
+.key-verify-box {
+  max-width: 500px;
+  margin: 0 auto;
+  background: white;
+  border: 2px solid var(--border-color);
+  border-radius: 16px;
+  padding: 2.5rem;
+  text-align: center;
+  box-shadow: var(--shadow);
+}
+
+.key-input {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1.1rem;
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  margin-bottom: 1rem;
+  text-align: center;
+  letter-spacing: 2px;
+}
+
+.key-input:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(0, 85, 204, 0.1);
+}
+
+.key-error {
+  color: #d32f2f;
+  background: #ffeef0;
+  border: 1px solid #d32f2f;
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-top: 1rem;
+  font-weight: 600;
+}
+
+.key-help {
+  margin-top: 1.5rem;
+  color: var(--text-light);
+  font-size: 0.9rem;
+}
+
+/* Gestión de claves */
+.keys-management {
+  background: white;
+  border: 2px solid var(--border-color);
+  border-radius: 14px;
+  padding: 2rem;
+  box-shadow: var(--shadow);
+}
+
+.keys-no-access {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.keys-no-access h3 {
+  font-size: 1.5rem;
+  color: #d32f2f;
+  margin-bottom: 1rem;
+}
+
+.keys-no-access p {
+  color: var(--text-light);
+  font-size: 1.1rem;
+}
+
+.keys-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid var(--border-color);
+}
+
+.keys-section h3 {
+  color: var(--text-dark);
+  margin-bottom: 1rem;
+}
+
+.key-result-box {
+  background: #e8f5e9;
+  border: 2px solid #4caf50;
+  border-radius: 14px;
+  padding: 2rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.key-result-box h3 {
+  color: #2e7d32;
+  margin-bottom: 1rem;
+}
+
+.key-display {
+  background: #1a1a2e;
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin: 1rem 0;
+}
+
+.key-display code {
+  color: #4caf50;
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  word-break: break-all;
+  user-select: all;
+}
+
+.key-warning {
+  color: #e65100;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+.access-log-table td,
+.access-log-table th {
+  font-size: 0.85rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.role-badge.owner {
+  background: #ff6f00;
+  color: white;
+}
