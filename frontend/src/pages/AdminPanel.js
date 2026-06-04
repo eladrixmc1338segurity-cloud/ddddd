@@ -1,7 +1,28 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { getAllUsers, getAllMaps, updateUserRole, deactivateUser, deleteMap } from '../services/api';
+import {
+  getAllUsers,
+  getAllMaps,
+  updateUserRole,
+  deactivateUser,
+  deleteMap,
+  createMap,
+  getMonetization,
+  updateMonetization
+} from '../services/api';
 import '../styles/admin.css';
+
+const emptyMonetization = {
+  paypalUrl: '',
+  kofiUrl: '',
+  patreonUrl: '',
+  discordUrl: '',
+  customLinks: [],
+  bannerEnabled: false,
+  bannerText: '',
+  bannerLink: '',
+  bannerImage: ''
+};
 
 const AdminPanel = () => {
   const { user } = useContext(AuthContext);
@@ -17,11 +38,17 @@ const AdminPanel = () => {
     fileName: ''
   });
 
+  const [monetization, setMonetization] = useState(emptyMonetization);
+  const [monetizationMsg, setMonetizationMsg] = useState('');
+  const [savingMonetization, setSavingMonetization] = useState(false);
+
   useEffect(() => {
     if (activeTab === 'maps') {
       fetchMaps();
     } else if (activeTab === 'users') {
       fetchUsers();
+    } else if (activeTab === 'monetization') {
+      fetchMonetization();
     }
   }, [activeTab]);
 
@@ -49,11 +76,39 @@ const AdminPanel = () => {
     }
   };
 
+  const fetchMonetization = async () => {
+    setLoading(true);
+    try {
+      const response = await getMonetization();
+      setMonetization({ ...emptyMonetization, ...response.data.monetization });
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateMap = async (e) => {
+    e.preventDefault();
+    if (!newMap.name || !newMap.description || !newMap.fileUrl) {
+      alert('Completa nombre, descripción y URL del archivo');
+      return;
+    }
+    try {
+      await createMap(newMap);
+      setNewMap({ name: '', description: '', category: 'Mapas', fileUrl: '', fileName: '' });
+      fetchMaps();
+    } catch (error) {
+      console.error('Error:', error);
+      alert(error.response?.data?.message || 'Error al crear el mapa');
+    }
+  };
+
   const handleDeleteMap = async (id) => {
     if (window.confirm('¿Estás seguro de que quieres eliminar este mapa?')) {
       try {
         await deleteMap(id);
-        setMaps(maps.filter(m => m._id !== id));
+        setMaps(maps.filter(m => m.id !== id));
       } catch (error) {
         console.error('Error:', error);
       }
@@ -80,6 +135,46 @@ const AdminPanel = () => {
     }
   };
 
+  const handleMonetizationChange = (field, value) => {
+    setMonetization(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleCustomLinkChange = (index, key, value) => {
+    setMonetization(prev => {
+      const customLinks = [...(prev.customLinks || [])];
+      customLinks[index] = { ...customLinks[index], [key]: value };
+      return { ...prev, customLinks };
+    });
+  };
+
+  const addCustomLink = () => {
+    setMonetization(prev => ({
+      ...prev,
+      customLinks: [...(prev.customLinks || []), { label: '', url: '' }]
+    }));
+  };
+
+  const removeCustomLink = (index) => {
+    setMonetization(prev => ({
+      ...prev,
+      customLinks: (prev.customLinks || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleSaveMonetization = async (e) => {
+    e.preventDefault();
+    setSavingMonetization(true);
+    setMonetizationMsg('');
+    try {
+      await updateMonetization(monetization);
+      setMonetizationMsg('✅ Configuración guardada correctamente');
+    } catch (error) {
+      setMonetizationMsg('❌ ' + (error.response?.data?.message || 'Error al guardar'));
+    } finally {
+      setSavingMonetization(false);
+    }
+  };
+
   if (user?.role !== 'admin') {
     return (
       <div className="admin-access-denied">
@@ -93,21 +188,27 @@ const AdminPanel = () => {
     <div className="admin-panel fade-in">
       <div className="admin-header">
         <h1>🔐 Panel de Administrador</h1>
-        <p>Gestiona mapas, usuarios y permisos del sistema</p>
+        <p>Gestiona mapas, usuarios, monetización y permisos del sistema</p>
       </div>
 
       <div className="admin-tabs">
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'maps' ? 'active' : ''}`}
           onClick={() => setActiveTab('maps')}
         >
           📦 Gestionar Mapas
         </button>
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
           onClick={() => setActiveTab('users')}
         >
           👥 Gestionar Usuarios
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'monetization' ? 'active' : ''}`}
+          onClick={() => setActiveTab('monetization')}
+        >
+          💰 Monetización
         </button>
       </div>
 
@@ -115,24 +216,24 @@ const AdminPanel = () => {
         {activeTab === 'maps' && (
           <div className="maps-management">
             <h2>Gestión de Mapas</h2>
-            
+
             <div className="upload-section">
               <h3>Subir Nuevo Mapa</h3>
-              <form className="upload-form">
-                <input 
-                  type="text" 
-                  placeholder="Nombre del mapa" 
+              <form className="upload-form" onSubmit={handleCreateMap}>
+                <input
+                  type="text"
+                  placeholder="Nombre del mapa"
                   value={newMap.name}
-                  onChange={(e) => setNewMap({...newMap, name: e.target.value})}
+                  onChange={(e) => setNewMap({ ...newMap, name: e.target.value })}
                 />
-                <textarea 
-                  placeholder="Descripción" 
+                <textarea
+                  placeholder="Descripción"
                   value={newMap.description}
-                  onChange={(e) => setNewMap({...newMap, description: e.target.value})}
+                  onChange={(e) => setNewMap({ ...newMap, description: e.target.value })}
                 />
-                <select 
+                <select
                   value={newMap.category}
-                  onChange={(e) => setNewMap({...newMap, category: e.target.value})}
+                  onChange={(e) => setNewMap({ ...newMap, category: e.target.value })}
                 >
                   <option>Configuraciones</option>
                   <option>Setups</option>
@@ -140,13 +241,13 @@ const AdminPanel = () => {
                   <option>Schematics</option>
                   <option>Otros</option>
                 </select>
-                <input 
-                  type="text" 
-                  placeholder="URL del archivo" 
+                <input
+                  type="text"
+                  placeholder="URL del archivo"
                   value={newMap.fileUrl}
-                  onChange={(e) => setNewMap({...newMap, fileUrl: e.target.value})}
+                  onChange={(e) => setNewMap({ ...newMap, fileUrl: e.target.value })}
                 />
-                <button type="button" className="btn-upload">Subir Mapa</button>
+                <button type="submit" className="btn-upload">Subir Mapa</button>
               </form>
             </div>
 
@@ -167,15 +268,15 @@ const AdminPanel = () => {
                   </thead>
                   <tbody>
                     {maps.map(map => (
-                      <tr key={map._id}>
+                      <tr key={map.id}>
                         <td><strong>{map.name}</strong></td>
                         <td>{map.category}</td>
-                        <td>{map.uploader?.username}</td>
+                        <td>{map.uploaderName || 'N/A'}</td>
                         <td>{map.downloadCount}</td>
                         <td>
-                          <button 
+                          <button
                             className="btn-action-delete"
-                            onClick={() => handleDeleteMap(map._id)}
+                            onClick={() => handleDeleteMap(map.id)}
                           >
                             Eliminar
                           </button>
@@ -194,7 +295,7 @@ const AdminPanel = () => {
         {activeTab === 'users' && (
           <div className="users-management">
             <h2>Gestión de Usuarios</h2>
-            
+
             {loading ? (
               <p>Cargando...</p>
             ) : users.length > 0 ? (
@@ -211,7 +312,7 @@ const AdminPanel = () => {
                 </thead>
                 <tbody>
                   {users.map(u => (
-                    <tr key={u._id}>
+                    <tr key={u.id}>
                       <td><strong>{u.username}</strong></td>
                       <td>{u.email}</td>
                       <td>
@@ -227,18 +328,18 @@ const AdminPanel = () => {
                       <td>{u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : 'N/A'}</td>
                       <td>
                         {u.role !== 'admin' && (
-                          <button 
+                          <button
                             className="btn-action-promote"
-                            onClick={() => handlePromoteUser(u._id)}
+                            onClick={() => handlePromoteUser(u.id)}
                           >
                             Promover
                           </button>
                         )}
-                        <button 
+                        <button
                           className="btn-action-deactivate"
-                          onClick={() => handleDeactivateUser(u._id)}
+                          onClick={() => handleDeactivateUser(u.id)}
                         >
-                          {u.isActive ? 'Desactivar' : 'Activar'}
+                          Desactivar
                         </button>
                       </td>
                     </tr>
@@ -248,6 +349,127 @@ const AdminPanel = () => {
             ) : (
               <p>No hay usuarios</p>
             )}
+          </div>
+        )}
+
+        {activeTab === 'monetization' && (
+          <div className="monetization-management">
+            <h2>Monetización</h2>
+            <p className="monetization-intro">
+              Configura los enlaces de donación/compra y el banner promocional que se mostrarán
+              en la página de inicio.
+            </p>
+
+            {monetizationMsg && <div className="monetization-msg">{monetizationMsg}</div>}
+
+            <form className="monetization-form" onSubmit={handleSaveMonetization}>
+              <fieldset className="monetization-fieldset">
+                <legend>Enlaces de donación / compra</legend>
+
+                <label>PayPal</label>
+                <input
+                  type="text"
+                  placeholder="https://paypal.me/tuusuario"
+                  value={monetization.paypalUrl}
+                  onChange={(e) => handleMonetizationChange('paypalUrl', e.target.value)}
+                />
+
+                <label>Ko-fi</label>
+                <input
+                  type="text"
+                  placeholder="https://ko-fi.com/tuusuario"
+                  value={monetization.kofiUrl}
+                  onChange={(e) => handleMonetizationChange('kofiUrl', e.target.value)}
+                />
+
+                <label>Patreon</label>
+                <input
+                  type="text"
+                  placeholder="https://patreon.com/tuusuario"
+                  value={monetization.patreonUrl}
+                  onChange={(e) => handleMonetizationChange('patreonUrl', e.target.value)}
+                />
+
+                <label>Discord</label>
+                <input
+                  type="text"
+                  placeholder="https://discord.gg/tuservidor"
+                  value={monetization.discordUrl}
+                  onChange={(e) => handleMonetizationChange('discordUrl', e.target.value)}
+                />
+              </fieldset>
+
+              <fieldset className="monetization-fieldset">
+                <legend>Enlaces personalizados</legend>
+                {(monetization.customLinks || []).map((link, index) => (
+                  <div key={index} className="custom-link-row">
+                    <input
+                      type="text"
+                      placeholder="Texto (ej: 🛒 Tienda)"
+                      value={link.label || ''}
+                      onChange={(e) => handleCustomLinkChange(index, 'label', e.target.value)}
+                    />
+                    <input
+                      type="text"
+                      placeholder="https://..."
+                      value={link.url || ''}
+                      onChange={(e) => handleCustomLinkChange(index, 'url', e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="btn-action-delete"
+                      onClick={() => removeCustomLink(index)}
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className="btn-add-link" onClick={addCustomLink}>
+                  + Añadir enlace
+                </button>
+              </fieldset>
+
+              <fieldset className="monetization-fieldset">
+                <legend>Banner promocional</legend>
+
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={monetization.bannerEnabled}
+                    onChange={(e) => handleMonetizationChange('bannerEnabled', e.target.checked)}
+                  />
+                  Mostrar banner en la página de inicio
+                </label>
+
+                <label>Texto del banner</label>
+                <input
+                  type="text"
+                  placeholder="🔥 ¡Oferta especial! Consigue tu setup premium"
+                  value={monetization.bannerText}
+                  onChange={(e) => handleMonetizationChange('bannerText', e.target.value)}
+                />
+
+                <label>Enlace del banner</label>
+                <input
+                  type="text"
+                  placeholder="https://..."
+                  value={monetization.bannerLink}
+                  onChange={(e) => handleMonetizationChange('bannerLink', e.target.value)}
+                />
+
+                <label>Imagen del banner (URL, opcional)</label>
+                <input
+                  type="text"
+                  placeholder="https://.../imagen.png"
+                  value={monetization.bannerImage}
+                  onChange={(e) => handleMonetizationChange('bannerImage', e.target.value)}
+                />
+              </fieldset>
+
+              <button type="submit" className="btn-upload" disabled={savingMonetization}>
+                {savingMonetization ? 'Guardando...' : 'Guardar configuración'}
+              </button>
+            </form>
           </div>
         )}
       </div>

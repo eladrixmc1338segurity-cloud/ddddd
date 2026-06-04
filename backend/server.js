@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
+const bcrypt = require('bcryptjs');
 const path = require('path');
 const { errorHandler } = require('./middleware/errorHandler');
 
@@ -95,6 +96,46 @@ db.serialize(() => {
   `, (err) => {
     if (!err) console.log('✅ Tabla permisos creada');
   });
+
+  // Tabla de monetización (enlaces de donación/compra y banner)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS monetization (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      paypalUrl TEXT DEFAULT '',
+      kofiUrl TEXT DEFAULT '',
+      patreonUrl TEXT DEFAULT '',
+      discordUrl TEXT DEFAULT '',
+      customLinks TEXT DEFAULT '[]',
+      bannerEnabled INTEGER DEFAULT 0,
+      bannerText TEXT DEFAULT '',
+      bannerLink TEXT DEFAULT '',
+      bannerImage TEXT DEFAULT '',
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `, (err) => {
+    if (!err) {
+      console.log('✅ Tabla monetización creada');
+      db.run('INSERT OR IGNORE INTO monetization (id) VALUES (1)');
+    }
+  });
+
+  // Crear usuario administrador por defecto si no existe
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (adminEmail && adminPassword) {
+    db.get('SELECT id FROM users WHERE email = ?', [adminEmail], async (err, row) => {
+      if (!err && !row) {
+        const hashed = await bcrypt.hash(adminPassword, 10);
+        db.run(
+          'INSERT INTO users (email, username, password, role) VALUES (?, ?, ?, ?)',
+          [adminEmail, 'admin', hashed, 'admin'],
+          (insErr) => {
+            if (!insErr) console.log('✅ Usuario administrador por defecto creado:', adminEmail);
+          }
+        );
+      }
+    });
+  }
 });
 
 // Guardar db en app para que otros archivos la usen
@@ -112,11 +153,15 @@ app.use(cors({
 const authRoutes = require('./routes/auth');
 const mapRoutes = require('./routes/maps');
 const userRoutes = require('./routes/users');
+const statsRoutes = require('./routes/stats');
+const monetizationRoutes = require('./routes/monetization');
 
 // Rutas
 app.use('/api/auth', authRoutes);
 app.use('/api/maps', mapRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/stats', statsRoutes);
+app.use('/api/monetization', monetizationRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
