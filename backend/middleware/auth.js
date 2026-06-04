@@ -16,7 +16,24 @@ exports.protect = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'tu_clave_secreta');
-    req.user = decoded;
+    
+    // Leer rol actual de la BD (no del JWT) para que cambios de rol se apliquen inmediatamente
+    const db = req.app.locals.db;
+    if (db) {
+      const user = await new Promise((resolve, reject) => {
+        db.get('SELECT id, role FROM users WHERE id = ?', [decoded.id], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+      if (user) {
+        req.user = { id: user.id, role: user.role };
+      } else {
+        req.user = decoded;
+      }
+    } else {
+      req.user = decoded;
+    }
 
     next();
   } catch (error) {
