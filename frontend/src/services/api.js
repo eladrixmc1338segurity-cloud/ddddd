@@ -51,3 +51,22 @@ export const updateUserRole = (id, role) => {
 export const deactivateUser = (id) => {
   return axios.put(`${API_URL}/users/${id}/deactivate`);
 };
+
+// Estadísticas públicas
+export const getStats = () => {
+  return axios.get(`${API_URL}/stats`);
+};
+
+// Monetización
+export const getMonetization = () => {
+  return axios.get(`${API_URL}/monetization`);
+};
+
+export const updateMonetization = (data) => {
+  return axios.put(`${API_URL}/monetization`, data);
+};
+
+// Perfil
+export const updateProfile = (data) => {
+  return axios.put(`${API_URL}/auth/profile`, data);
+};

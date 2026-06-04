@@ -53,10 +53,12 @@ const Dashboard = () => {
     fetchMaps(selectedChannel);
   }, [selectedChannel]);
 
-  const fetchMaps = async (channel) => {
+  const fetchMaps = async (channelId) => {
     setLoading(true);
     try {
-      const response = await getAllMaps(channel);
+      const channel = CHANNELS.find(c => c.id === channelId);
+      const category = channel ? channel.name : undefined;
+      const response = await getAllMaps(category);
       setMaps(response.data.maps || []);
     } catch (error) {
       console.error('Error fetching maps:', error);
@@ -104,14 +106,14 @@ const Dashboard = () => {
             <div className="loading">Cargando contenido...</div>
           ) : maps.length > 0 ? (
             maps.map(map => (
-              <div key={map._id} className="map-card float">
+              <div key={map.id} className="map-card float">
                 <div className="map-card-header">
                   <h3>{map.name}</h3>
                   <span className="map-category">{map.category}</span>
                 </div>
                 <p className="map-description">{map.description}</p>
                 <div className="map-footer">
-                  <span className="uploader">Por: {map.uploader.username}</span>
+                  <span className="uploader">Por: {map.uploaderName || 'Admin'}</span>
                   <a href={map.fileUrl} target="_blank" rel="noopener noreferrer" className="btn-download">
                     Descargar
                   </a>
