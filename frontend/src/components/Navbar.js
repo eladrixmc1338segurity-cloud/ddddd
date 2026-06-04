@@ -68,7 +68,7 @@ const Navbar = () => {
           )}
         </div>
         <div className="navbar-links">
-          <button onClick={() => navigate('/dashboard')} className="btn-nav-login">
+          <button onClick={() => navigate('/')} className="btn-nav-login">
             Inicio
           </button>
           <button onClick={() => navigate('/profile')} className="btn-nav-register">

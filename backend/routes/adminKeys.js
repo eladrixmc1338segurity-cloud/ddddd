@@ -34,7 +34,7 @@ router.post('/verify', protect, authorize('admin'), (req, res) => {
       }
 
       // Buscar clave del usuario
-      db.get('SELECT * FROM admin_keys WHERE userId = ? AND isRevoked = 0', [userId], async (err, row) => {
+      db.get('SELECT * FROM admin_keys WHERE userId = ?', [userId], async (err, row) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
 
         if (!row) {
@@ -68,7 +68,7 @@ router.get('/', protect, authorizeOwner, (req, res) => {
 
   db.all(
     `SELECT u.id, u.email, u.username, u.role, u.isActive,
-            ak.id as keyId, ak.isRevoked, ak.createdAt as keyCreatedAt, ak.updatedAt as keyUpdatedAt
+            ak.id as keyId, ak.createdAt as keyCreatedAt, ak.updatedAt as keyUpdatedAt
      FROM users u
      LEFT JOIN admin_keys ak ON u.id = ak.userId
      WHERE u.role IN ('admin', 'owner')
@@ -120,8 +120,8 @@ router.post('/assign', protect, authorizeOwner, async (req, res) => {
     const plainKey = crypto.randomBytes(16).toString('hex');
     const keyHash = await bcrypt.hash(plainKey, 10);
 
-    // Revocar clave anterior si existe
-    db.run('UPDATE admin_keys SET isRevoked = 1 WHERE userId = ?', [userId], (err) => {
+    // Eliminar clave anterior si existe (UNIQUE constraint en userId)
+    db.run('DELETE FROM admin_keys WHERE userId = ?', [userId], (err) => {
       if (err) return res.status(500).json({ success: false, message: err.message });
 
       // Insertar nueva clave
@@ -153,8 +153,8 @@ router.put('/regenerate/:userId', protect, authorizeOwner, async (req, res) => {
     if (err) return res.status(500).json({ success: false, message: err.message });
     if (!user) return res.status(404).json({ success: false, message: 'Admin no encontrado' });
 
-    // Revocar clave anterior
-    db.run('UPDATE admin_keys SET isRevoked = 1 WHERE userId = ?', [userId]);
+    // Eliminar clave anterior (UNIQUE constraint en userId)
+    db.run('DELETE FROM admin_keys WHERE userId = ?', [userId]);
 
     // Generar nueva clave
     const plainKey = crypto.randomBytes(16).toString('hex');
@@ -183,7 +183,7 @@ router.delete('/revoke/:userId', protect, authorizeOwner, (req, res) => {
   const db = req.app.locals.db;
 
   db.run(
-    'UPDATE admin_keys SET isRevoked = 1, updatedAt = CURRENT_TIMESTAMP WHERE userId = ? AND isRevoked = 0',
+    'DELETE FROM admin_keys WHERE userId = ?',
     [userId],
     function(err) {
       if (err) return res.status(500).json({ success: false, message: err.message });
