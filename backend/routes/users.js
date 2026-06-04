@@ -35,21 +35,30 @@ router.put('/:id/role', protect, authorize('admin'), (req, res) => {
   }
 
   // Evitar que un admin se quite a sí mismo el rol y se quede sin acceso
-  if (Number(id) === Number(req.user.id) && role !== 'admin') {
+  if (Number(id) === Number(req.user.id) && role !== req.user.role) {
     return res.status(400).json({
       success: false,
-      message: 'No puedes quitarte el rol de administrador a ti mismo'
+      message: 'No puedes cambiarte el rol a ti mismo'
     });
   }
 
-  db.run('UPDATE users SET role = ? WHERE id = ?', [role, id], function(err) {
+  // Proteger al Owner: solo el owner puede modificar a otro owner
+  db.get('SELECT role FROM users WHERE id = ?', [id], (lookupErr, target) => {
+    if (lookupErr) return res.status(500).json({ success: false, message: lookupErr.message });
+    if (!target) return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+    if (target.role === 'owner' && req.user.role !== 'owner') {
+      return res.status(403).json({ success: false, message: 'No puedes modificar al Owner' });
+    }
+
+    db.run('UPDATE users SET role = ? WHERE id = ?', [role, id], function(err) {
     if (err) {
       return res.status(500).json({ success: false, message: err.message });
     }
 
-    res.status(200).json({
-      success: true,
-      message: role === 'admin' ? 'Usuario promovido a administrador' : 'Administrador degradado a usuario'
+      res.status(200).json({
+        success: true,
+        message: role === 'admin' ? 'Usuario promovido a administrador' : 'Administrador degradado a usuario'
+      });
     });
   });
 });
@@ -66,14 +75,22 @@ router.put('/:id/deactivate', protect, authorize('admin'), (req, res) => {
     });
   }
 
-  db.run('UPDATE users SET isActive = 0 WHERE id = ?', [id], function(err) {
-    if (err) {
-      return res.status(500).json({ success: false, message: err.message });
+  // Proteger al Owner
+  db.get('SELECT role FROM users WHERE id = ?', [id], (lookupErr, target) => {
+    if (lookupErr) return res.status(500).json({ success: false, message: lookupErr.message });
+    if (target && target.role === 'owner' && req.user.role !== 'owner') {
+      return res.status(403).json({ success: false, message: 'No puedes desactivar al Owner' });
     }
 
-    res.status(200).json({
-      success: true,
-      message: 'Usuario desactivado'
+    db.run('UPDATE users SET isActive = 0 WHERE id = ?', [id], function(err) {
+      if (err) {
+        return res.status(500).json({ success: false, message: err.message });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Usuario desactivado'
+      });
     });
   });
 });

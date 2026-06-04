@@ -760,8 +760,6 @@ const AdminPanel = () => {
                                 <span className="status-badge active">No necesita clave</span>
                               ) : !a.keyId ? (
                                 <span className="status-badge inactive">Sin clave</span>
-                              ) : a.isRevoked ? (
-                                <span className="status-badge inactive">Revocada</span>
                               ) : (
                                 <span className="status-badge active">Activa</span>
                               )}
@@ -769,7 +767,7 @@ const AdminPanel = () => {
                             <td>
                               {a.role !== 'owner' && (
                                 <div className="user-actions">
-                                  {!a.keyId || a.isRevoked ? (
+                                  {!a.keyId ? (
                                     <button
                                       className="btn-action-promote"
                                       onClick={() => handleAssignKey(a.id)}
