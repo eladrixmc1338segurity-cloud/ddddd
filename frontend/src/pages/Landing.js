@@ -31,6 +31,14 @@ const PRODUCTS = [
   }
 ];
 
+const CHANNELS = [
+  { id: 'configuraciones', icon: '⚙️', name: 'Configuraciones', description: 'Configuraciones del servidor y del sistema.' },
+  { id: 'setups', icon: '🎮', name: 'Setups', description: 'Configuraciones de gameplay y mecánicas.' },
+  { id: 'mapas', icon: '🗺️', name: 'Mapas', description: 'Descargar e instalar mapas personalizados.' },
+  { id: 'schematics', icon: '📐', name: 'Schematics', description: 'Esquemas y plantillas listas para usar.' },
+  { id: 'otros', icon: '📦', name: 'Otros', description: 'Otros recursos y utilidades.' }
+];
+
 const Landing = () => {
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -46,6 +54,11 @@ const Landing = () => {
       .then(res => setMonetization(res.data.monetization))
       .catch(() => {});
   }, []);
+
+  const scrollTo = (id) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const donationLinks = [];
   if (monetization) {
@@ -74,6 +87,16 @@ const Landing = () => {
           <span>{monetization.bannerText}</span>
         </a>
       )}
+
+      {/* Navegación interna */}
+      <nav className="landing-nav">
+        <button className="landing-nav-link" onClick={() => scrollTo('inicio')}>Inicio</button>
+        <button className="landing-nav-link" onClick={() => scrollTo('canales')}>Canales</button>
+        <button className="landing-nav-link" onClick={() => scrollTo('productos')}>Productos</button>
+        {donationLinks.length > 0 && (
+          <button className="landing-nav-link" onClick={() => scrollTo('apoyo')}>Apoyo</button>
+        )}
+      </nav>
 
       {/* Hero */}
       <section className="hero">
@@ -106,7 +129,7 @@ const Landing = () => {
       </section>
 
       {/* Estadísticas */}
-      <section className="stats-section">
+      <section className="stats-section" id="inicio">
         <div className="stat-card">
           <span className="stat-number">{stats.totalMaps}</span>
           <span className="stat-label">Recursos disponibles</span>
@@ -121,8 +144,28 @@ const Landing = () => {
         </div>
       </section>
 
+      {/* Canales y sus categorías */}
+      <section className="channels-section" id="canales">
+        <h2 className="section-title">Canales y categorías</h2>
+        <p className="section-subtitle">Explora todo el contenido organizado por canales</p>
+        <div className="channels-grid">
+          {CHANNELS.map(channel => (
+            <button
+              key={channel.id}
+              type="button"
+              className="channel-card"
+              onClick={() => navigate(user ? '/dashboard' : '/register')}
+            >
+              <span className="channel-icon">{channel.icon}</span>
+              <span className="channel-name">{channel.name}</span>
+              <span className="channel-description">{channel.description}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
       {/* Productos */}
-      <section className="products-section">
+      <section className="products-section" id="productos">
         <h2 className="section-title">Nuestros productos</h2>
         <p className="section-subtitle">Descubre todo lo que ofrecemos para tu servidor y tu juego</p>
         <div className="products-grid">
@@ -144,7 +187,7 @@ const Landing = () => {
 
       {/* Apoya el proyecto (monetización) */}
       {donationLinks.length > 0 && (
-        <section className="support-section">
+        <section className="support-section" id="apoyo">
           <h2 className="section-title">Apoya el proyecto</h2>
           <p className="section-subtitle">
             Si te gusta lo que hacemos, puedes apoyarnos o conseguir contenido a través de estos enlaces

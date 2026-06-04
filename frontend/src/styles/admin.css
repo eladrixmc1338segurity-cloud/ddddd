@@ -220,6 +220,9 @@
 
 .btn-action-delete,
 .btn-action-promote,
+.btn-action-demote,
+.btn-action-activate,
+.btn-action-perms,
 .btn-action-deactivate {
   padding: 0.5rem 1rem;
   border: 2px solid;
@@ -228,7 +231,6 @@
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 0.85rem;
-  margin: 0 0.25rem;
   text-transform: uppercase;
 }
 
@@ -263,6 +265,71 @@
 .btn-action-deactivate:hover {
   background: #f57c00;
   color: white;
+}
+
+.btn-action-demote {
+  background: #ede7f6;
+  color: #5e35b1;
+  border-color: #5e35b1;
+}
+
+.btn-action-demote:hover {
+  background: #5e35b1;
+  color: white;
+}
+
+.btn-action-activate {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-color: #2e7d32;
+}
+
+.btn-action-activate:hover {
+  background: #2e7d32;
+  color: white;
+}
+
+.btn-action-perms {
+  background: #e3f2fd;
+  color: #0055cc;
+  border-color: #0055cc;
+}
+
+.btn-action-perms:hover {
+  background: #0055cc;
+  color: white;
+}
+
+/* Acciones de usuario y panel de permisos */
+.user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.perms-panel {
+  margin-top: 0.75rem;
+  padding: 1rem;
+  background: #f7fbff;
+  border: 2px solid var(--border-color, #000);
+  border-radius: 10px;
+}
+
+.perms-panel h4 {
+  margin: 0 0 0.75rem;
+  color: var(--primary-blue, #0055cc);
+}
+
+.perms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.perms-msg {
+  margin-bottom: 0.75rem;
+  font-weight: 600;
 }
 
 @media (max-width: 768px) {

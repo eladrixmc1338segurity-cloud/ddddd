@@ -26,10 +26,43 @@
   border-radius: 4px;
 }
 
+/* Navegación interna de la landing */
+.landing-nav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(6px);
+  border-bottom: 2px solid var(--border-color);
+}
+
+.landing-nav-link {
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  padding: 0.5rem 1.25rem;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--primary-blue);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.landing-nav-link:hover {
+  background: var(--light-blue);
+  border-color: var(--primary-blue);
+  transform: translateY(-2px);
+}
+
 /* Hero */
 .hero {
   text-align: center;
-  padding: 5rem 1.5rem 3rem;
+  padding: 4rem 1.5rem 3rem;
   max-width: 900px;
   margin: 0 auto;
 }
@@ -139,6 +172,63 @@
   text-align: center;
   color: var(--text-light);
   margin-bottom: 2.5rem;
+}
+
+/* Desplazamiento con anclas (evita que la barra fija tape el título) */
+.stats-section,
+.channels-section,
+.products-section,
+.support-section {
+  scroll-margin-top: 70px;
+}
+
+/* Canales */
+.channels-section {
+  padding: 2rem 1.5rem 3rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.channels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.25rem;
+}
+
+.channel-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.5rem;
+  background: white;
+  border: 2px solid var(--border-color);
+  border-radius: 14px;
+  padding: 1.5rem 1rem;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: all 0.3s ease;
+}
+
+.channel-card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-hover);
+  background: var(--light-blue);
+}
+
+.channel-icon {
+  font-size: 2.4rem;
+}
+
+.channel-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--primary-blue);
+}
+
+.channel-description {
+  color: var(--text-light);
+  font-size: 0.9rem;
 }
 
 /* Productos */

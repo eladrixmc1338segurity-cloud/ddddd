@@ -1,127 +1,63 @@
 # ⚡ Setups Platform
 
-Una plataforma web moderna y segura para gestionar mapas, configuraciones y recursos con sistema de autenticación JWT y panel de administrador.
+Plataforma web para compartir y gestionar **setups, configuraciones, plantillas/schematics y mapas de Minecraft**, con autenticación, panel de administrador y monetización (enlaces de donación + banner).
 
-## 🌟 Características
+## 🧩 Tecnologías
 
-✨ **Autenticación Segura**
-- Registro e inicio de sesión con email y contraseña
-- Tokens JWT seguros
-- Contraseñas encriptadas con bcrypt
+- **Frontend:** React 18 + React Router + Axios
+- **Backend:** Node.js + Express
+- **Base de datos:** SQLite (archivo `backend/database.db`, no requiere instalar nada)
+- **Auth:** JWT + bcrypt
 
-🎨 **Diseño Moderno**
-- Interfaz intuitiva con tonos azules
-- Animaciones suaves y transiciones fluidas
-- Diseño completamente responsivo
-- Botones interactivos con hover effects
+## 📚 Guías (solo 4, para no perderte)
 
-📦 **Gestión de Contenido**
-- 5 canales temáticos (Configuraciones, Setups, Mapas, Schematics, Otros)
-- Sistema de descarga de mapas
-- Búsqueda y filtrado por categoría
-- Contador de descargas
+1. **[GUIA_PC.md](./GUIA_PC.md)** — Cómo ejecutarla/hostearla en tu PC (local).
+2. **[GUIA_WEB.md](./GUIA_WEB.md)** — Cómo subirla a una web (hosting online).
+3. **[GUIA_USO.md](./GUIA_USO.md)** — Cómo usar la web y el panel de administrador.
+4. **README.md** — Este archivo (resumen general).
 
-👑 **Panel de Administrador**
-- Gestión completa de mapas (crear, editar, eliminar)
-- Gestión de usuarios (promover, desactivar)
-- Control de permisos
-- Acceso seguro solo con URL específica
-- Estadísticas de uso
+## 🚀 Inicio rápido (PC)
 
-🔒 **Seguridad Empresarial**
-- Autenticación JWT con expiración
-- Validación de datos en backend
-- Protección contra CORS
-- Roles de usuario (admin, user)
-- Base de datos MongoDB con datos cifrados
-
-## 🚀 Inicio Rápido
-
-### Requisitos
-- Node.js v16+
-- npm v8+
-- MongoDB (o SQLite como alternativa)
-
-### Instalación
+Abre **dos** terminales:
 
 ```bash
-# Backend
+# Terminal 1 - Backend
 cd backend
 npm install
-cp .env.example .env
 npm start
+```
 
-# En otra terminal - Frontend
+```bash
+# Terminal 2 - Frontend
 cd frontend
 npm install
 npm start
 ```
 
-Abre http://localhost:3000 en tu navegador.
-
-## 📚 Documentación
-
-- [Guía de Instalación Completa](./docs/GETTING_STARTED.md)
-- [Panel de Administrador](./docs/ADMIN_SETUP.md)
-
-## 🔧 Tecnologías
-
-**Backend**
-- Node.js + Express.js
-- MongoDB + Mongoose
-- JWT para autenticación
-- Bcrypt para encriptación
-
-**Frontend**
-- React 18
-- React Router DOM
-- Axios para API calls
-- CSS3 con animaciones
+Luego abre <http://localhost:3000>. Detalles completos en **[GUIA_PC.md](./GUIA_PC.md)**.
 
 ## 📁 Estructura
 
 ```
-├── backend/        # Servidor REST API
+├── backend/        # API REST (Express + SQLite)
+│   ├── routes/     # auth, maps, users, stats, monetization
+│   ├── middleware/ # protección JWT y roles
+│   └── server.js   # arranque + creación de tablas
 ├── frontend/       # Aplicación React
-└── docs/           # Documentación
-    ├── GETTING_STARTED.md
-    └── ADMIN_SETUP.md
+│   └── src/
+│       ├── pages/      # Landing, Dashboard, AdminPanel, Profile, Login, Register
+│       ├── components/ # Navbar
+│       └── services/   # api.js (llamadas al backend)
+├── README.md
+├── GUIA_PC.md
+├── GUIA_WEB.md
+└── GUIA_USO.md
 ```
 
-## 👤 Usuario Admin por Defecto
+## 🎯 Canales
 
-- **Email**: `eladrixmc1338.segurity@gmail.com`
-- **Contraseña**: Configurada en `backend/.env`
-
-Acceso al panel: http://localhost:3000/admin
-
-## 🎯 Canales Disponibles
-
-1. **⚙️ Configuraciones** - Configuraciones del servidor y sistema
-2. **🎮 Setups** - Configuraciones de gameplay y mecánicas
-3. **🗺️ Mapas** - Mapas personalizados descargables
-4. **📐 Schematics** - Esquemas y plantillas
-5. **📦 Otros** - Recursos y utilidades adicionales
-
-## 🛡️ Seguridad
-
-✅ Autenticación JWT  
-✅ Contraseñas hasheadas  
-✅ Validación de datos  
-✅ Control de CORS  
-✅ Roles y permisos  
-✅ Panel admin protegido  
+⚙️ Configuraciones · 🎮 Setups · 🗺️ Mapas · 📐 Schematics · 📦 Otros
 
 ## 📝 Licencia
 
-MIT License - Siéntete libre de usar y modificar.
-
-## 💬 Soporte
-
-Para preguntas o problemas, contacta al equipo de desarrollo.
-
----
-
-**Versión**: 1.0.0  
-**Creado**: Junio 2026  
-**Autor**: Equipo de Desarrollo
+MIT — libre para usar y modificar.
