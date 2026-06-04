@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import {
   getAllUsers,
@@ -63,6 +63,7 @@ const AdminPanel = () => {
   const [permsData, setPermsData] = useState(emptyPermissions);
   const [permsMsg, setPermsMsg] = useState('');
   const [savingPerms, setSavingPerms] = useState(false);
+  const latestPermsRequest = useRef(null);
 
   useEffect(() => {
     if (activeTab === 'maps') {
@@ -162,13 +163,17 @@ const AdminPanel = () => {
   const openPermissions = async (userId) => {
     if (permsUserId === userId) {
       setPermsUserId(null);
+      latestPermsRequest.current = null;
       return;
     }
     setPermsMsg('');
     setPermsUserId(userId);
     setPermsData(emptyPermissions);
+    latestPermsRequest.current = userId;
     try {
       const response = await getUserPermissions(userId);
+      // Ignorar respuestas obsoletas si el admin abrió otro usuario mientras tanto
+      if (latestPermsRequest.current !== userId) return;
       setPermsData({ ...emptyPermissions, ...response.data.permissions });
     } catch (error) {
       console.error('Error:', error);
