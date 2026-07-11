@@ -13,11 +13,15 @@ import {
   getMonetization,
   updateMonetization,
   verifyAdminKey,
+  setAdminAccessToken,
   getAdminKeys,
   getAccessLog,
   assignAdminKey,
   regenerateAdminKey,
-  revokeAdminKey
+  revokeAdminKey,
+  getReviewsForOwner,
+  updateReviewStatus,
+  deleteReview
 } from '../services/api';
 import '../styles/admin.css';
 
@@ -58,7 +62,8 @@ const AdminPanel = () => {
     description: '',
     category: 'Mapas',
     fileUrl: '',
-    fileName: ''
+    fileName: '',
+    imageUrls: ''
   });
 
   const [monetization, setMonetization] = useState(emptyMonetization);
@@ -83,6 +88,10 @@ const AdminPanel = () => {
   const [newKeyResult, setNewKeyResult] = useState(null);
   const [keysLoading, setKeysLoading] = useState(false);
 
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewActionMsg, setReviewActionMsg] = useState('');
+
   useEffect(() => {
     if (activeTab === 'maps') {
       fetchMaps();
@@ -93,14 +102,30 @@ const AdminPanel = () => {
     } else if (activeTab === 'keys') {
       fetchAdminKeys();
       fetchAccessLog();
+    } else if (activeTab === 'reviews') {
+      fetchOwnerReviews();
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    setAdminAccessToken(null);
+    setKeyVerified(false);
+
+    return () => {
+      setAdminAccessToken(null);
+      setKeyVerified(false);
+    };
+  }, []);
 
   const handleVerifyKey = async () => {
     setKeyLoading(true);
     setKeyError('');
     try {
-      await verifyAdminKey(keyInput);
+      const response = await verifyAdminKey(keyInput);
+      const token = response.data?.accessToken;
+      if (token) {
+        setAdminAccessToken(token);
+      }
       setKeyVerified(true);
     } catch (error) {
       setKeyError(error.response?.data?.message || 'Error al verificar la clave');
@@ -118,6 +143,42 @@ const AdminPanel = () => {
       console.error('Error:', error);
     } finally {
       setKeysLoading(false);
+    }
+  };
+
+  const fetchOwnerReviews = async () => {
+    setReviewActionMsg('');
+    setReviewsLoading(true);
+    try {
+      const response = await getReviewsForOwner();
+      setReviews(response.data.reviews || []);
+    } catch (error) {
+      console.error('Error fetching owner reviews:', error);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  const updateReviewActiveState = async (reviewId, isActive) => {
+    try {
+      await updateReviewStatus(reviewId, isActive);
+      setReviewActionMsg('Estado de reseña actualizado');
+      fetchOwnerReviews();
+    } catch (error) {
+      setReviewActionMsg('No se pudo actualizar la reseña');
+      console.error('Error:', error);
+    }
+  };
+
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm('¿Eliminar esta reseña permanentemente?')) return;
+    try {
+      await deleteReview(reviewId);
+      setReviewActionMsg('Reseña eliminada');
+      fetchOwnerReviews();
+    } catch (error) {
+      setReviewActionMsg('No se pudo eliminar la reseña');
+      console.error('Error:', error);
     }
   };
 
@@ -200,13 +261,29 @@ const AdminPanel = () => {
 
   const handleCreateMap = async (e) => {
     e.preventDefault();
+    const images = newMap.imageUrls
+      .split(',')
+      .map((url) => url.trim())
+      .filter((url) => url);
+
     if (!newMap.name || !newMap.description || !newMap.fileUrl) {
       alert('Completa nombre, descripción y URL del archivo');
       return;
     }
+
+    if (images.length < 1) {
+      alert('Debes incluir al menos una foto (URL) para publicar.');
+      return;
+    }
+
+    if (images.length > 15) {
+      alert('No puedes incluir más de 15 fotos.');
+      return;
+    }
+
     try {
-      await createMap(newMap);
-      setNewMap({ name: '', description: '', category: 'Mapas', fileUrl: '', fileName: '' });
+      await createMap({ ...newMap, images });
+      setNewMap({ name: '', description: '', category: 'Mapas', fileUrl: '', fileName: '', imageUrls: '' });
       fetchMaps();
     } catch (error) {
       console.error('Error:', error);
@@ -390,12 +467,22 @@ const AdminPanel = () => {
         >
           💰 Monetización
         </button>
-        <button
-          className={`tab-btn ${activeTab === 'keys' ? 'active' : ''}`}
-          onClick={() => setActiveTab('keys')}
-        >
-          🔑 Claves de Admins
-        </button>
+        {user?.role === 'owner' && (
+          <button
+            className={`tab-btn ${activeTab === 'keys' ? 'active' : ''}`}
+            onClick={() => setActiveTab('keys')}
+          >
+            🔑 Claves de Admins
+          </button>
+        )}
+        {user?.role === 'owner' && (
+          <button
+            className={`tab-btn ${activeTab === 'reviews' ? 'active' : ''}`}
+            onClick={() => setActiveTab('reviews')}
+          >
+            ⭐ Reseñas
+          </button>
+        )}
       </div>
 
       <div className="admin-content">
@@ -433,6 +520,15 @@ const AdminPanel = () => {
                   value={newMap.fileUrl}
                   onChange={(e) => setNewMap({ ...newMap, fileUrl: e.target.value })}
                 />
+                <input
+                  type="text"
+                  placeholder="URLs de fotos (separadas por comas, min 1 max 15)"
+                  value={newMap.imageUrls}
+                  onChange={(e) => setNewMap({ ...newMap, imageUrls: e.target.value })}
+                />
+                <small className="form-note">
+                  Agrega entre 1 y 15 imágenes. Separa cada URL con una coma.
+                </small>
                 <button type="submit" className="btn-upload">Subir Mapa</button>
               </form>
             </div>
@@ -579,6 +675,57 @@ const AdminPanel = () => {
               </table>
             ) : (
               <p>No hay usuarios</p>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'reviews' && user?.role === 'owner' && (
+          <div className="reviews-management">
+            <h2>Gestión de Reseñas</h2>
+            <p>Revisa y administra los comentarios dejados por los usuarios.</p>
+            {reviewActionMsg && <div className="review-action-msg">{reviewActionMsg}</div>}
+            {reviewsLoading ? (
+              <p>Cargando reseñas...</p>
+            ) : reviews.length > 0 ? (
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Mapa</th>
+                    <th>Usuario</th>
+                    <th>Calificación</th>
+                    <th>Comentario</th>
+                    <th>Activo</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reviews.map(review => (
+                    <tr key={review.id}>
+                      <td>{review.mapName}</td>
+                      <td>{review.username}</td>
+                      <td>{'⭐'.repeat(review.rating)}</td>
+                      <td>{review.comment}</td>
+                      <td>{review.isActive ? 'Sí' : 'No'}</td>
+                      <td>
+                        <button
+                          className="btn-action-toggle"
+                          onClick={() => updateReviewActiveState(review.id, !review.isActive)}
+                        >
+                          {review.isActive ? 'Desactivar' : 'Activar'}
+                        </button>
+                        <button
+                          className="btn-action-delete"
+                          onClick={() => handleDeleteReview(review.id)}
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p>No hay reseñas registradas.</p>
             )}
           </div>
         )}

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect, authorize } = require('../middleware/auth');
+const { protect, authorizeAdminAccess } = require('../middleware/auth');
 
 const FIELDS = [
   'paypalUrl',
@@ -65,8 +65,8 @@ router.get('/', (req, res) => {
   });
 });
 
-// PUT - Actualizar configuración (solo admin)
-router.put('/', protect, authorize('admin'), (req, res) => {
+// PUT - Actualizar configuración (solo admin con clave verificada)
+router.put('/', protect, authorizeAdminAccess, (req, res) => {
   const db = req.app.locals.db;
   const body = req.body || {};
 

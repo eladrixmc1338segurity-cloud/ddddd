@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect, authorize } = require('../middleware/auth');
+const { protect, authorizeAdminAccess } = require('../middleware/auth');
 
 // GET - Obtener todos los mapas
 router.get('/', (req, res) => {
@@ -58,11 +58,19 @@ router.get('/:id', (req, res) => {
   });
 });
 
-// POST - Crear mapa (solo admin)
-router.post('/', protect, authorize('admin'), (req, res) => {
-  const { name, description, category, fileUrl, fileName, thumbnail, tags } = req.body;
+// POST - Crear mapa (solo admin con clave verificada)
+router.post('/', protect, authorizeAdminAccess, (req, res) => {
+  const { name, description, category, fileUrl, fileName, thumbnail, tags, images } = req.body;
   const db = req.app.locals.db;
   const uploader = req.user.id;
+
+  const imageList = Array.isArray(images) ? images.filter((img) => typeof img === 'string' && img.trim()) : [];
+  if (imageList.length < 1) {
+    return res.status(400).json({ success: false, message: 'Debes incluir al menos una foto para publicar.' });
+  }
+  if (imageList.length > 15) {
+    return res.status(400).json({ success: false, message: 'No puedes incluir más de 15 fotos.' });
+  }
 
   if (!name || !description || !category || !fileUrl) {
     return res.status(400).json({
@@ -72,8 +80,8 @@ router.post('/', protect, authorize('admin'), (req, res) => {
   }
 
   db.run(
-    'INSERT INTO maps (name, description, category, fileUrl, fileName, thumbnail, tags, uploader) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [name, description, category, fileUrl, fileName, thumbnail, tags ? tags.join(',') : '', uploader],
+    'INSERT INTO maps (name, description, category, fileUrl, fileName, thumbnail, images, tags, uploader) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [name, description, category, fileUrl, fileName, thumbnail, JSON.stringify(imageList), tags ? tags.join(',') : '', uploader],
     function(err) {
       if (err) {
         return res.status(500).json({ success: false, message: err.message });
@@ -82,21 +90,29 @@ router.post('/', protect, authorize('admin'), (req, res) => {
       res.status(201).json({
         success: true,
         message: 'Mapa creado exitosamente',
-        map: { id: this.lastID, name, description, category }
+        map: { id: this.lastID, name, description, category, images: imageList }
       });
     }
   );
 });
 
-// PUT - Actualizar mapa (solo admin)
-router.put('/:id', protect, authorize('admin'), (req, res) => {
+// PUT - Actualizar mapa (solo admin con clave verificada)
+router.put('/:id', protect, authorizeAdminAccess, (req, res) => {
   const { id } = req.params;
-  const { name, description, category, fileUrl, fileName, thumbnail, tags } = req.body;
+  const { name, description, category, fileUrl, fileName, thumbnail, tags, images } = req.body;
   const db = req.app.locals.db;
 
+  const imageList = Array.isArray(images) ? images.filter((img) => typeof img === 'string' && img.trim()) : [];
+  if (imageList.length < 1) {
+    return res.status(400).json({ success: false, message: 'Debes incluir al menos una foto para publicar.' });
+  }
+  if (imageList.length > 15) {
+    return res.status(400).json({ success: false, message: 'No puedes incluir más de 15 fotos.' });
+  }
+
   db.run(
-    'UPDATE maps SET name = ?, description = ?, category = ?, fileUrl = ?, fileName = ?, thumbnail = ?, tags = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?',
-    [name, description, category, fileUrl, fileName, thumbnail, tags ? (Array.isArray(tags) ? tags.join(',') : tags) : '', id],
+    'UPDATE maps SET name = ?, description = ?, category = ?, fileUrl = ?, fileName = ?, thumbnail = ?, images = ?, tags = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?',
+    [name, description, category, fileUrl, fileName, thumbnail, JSON.stringify(imageList), tags ? (Array.isArray(tags) ? tags.join(',') : tags) : '', id],
     function (err) {
       if (err) {
         return res.status(500).json({ success: false, message: err.message });
@@ -110,8 +126,8 @@ router.put('/:id', protect, authorize('admin'), (req, res) => {
   );
 });
 
-// DELETE - Eliminar mapa (solo admin)
-router.delete('/:id', protect, authorize('admin'), (req, res) => {
+// DELETE - Eliminar mapa (solo admin con clave verificada)
+router.delete('/:id', protect, authorizeAdminAccess, (req, res) => {
   const { id } = req.params;
   const db = req.app.locals.db;
 

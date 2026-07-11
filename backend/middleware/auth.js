@@ -59,6 +59,40 @@ exports.authorize = (...roles) => {
   };
 };
 
+exports.authorizeAdminAccess = (req, res, next) => {
+  if (req.user.role === 'owner') return next();
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'No tiene permiso para acceder a esta sección'
+    });
+  }
+
+  const accessToken = req.headers['x-admin-access-token'];
+  if (!accessToken) {
+    return res.status(403).json({
+      success: false,
+      message: 'Debes verificar tu clave secreta para acceder al panel de administración'
+    });
+  }
+
+  const db = req.app.locals.db;
+  db.get(
+    'SELECT id FROM admin_access_sessions WHERE userId = ? AND accessToken = ? AND expiresAt > ?',
+    [req.user.id, accessToken, new Date().toISOString()],
+    (err, sessionRow) => {
+      if (err) return res.status(500).json({ success: false, message: err.message });
+      if (!sessionRow) {
+        return res.status(403).json({
+          success: false,
+          message: 'Debes verificar tu clave secreta para acceder al panel de administración'
+        });
+      }
+      next();
+    }
+  );
+};
+
 exports.authorizeOwner = (req, res, next) => {
   if (req.user.role !== 'owner') {
     return res.status(403).json({

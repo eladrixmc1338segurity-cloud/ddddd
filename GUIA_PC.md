@@ -22,7 +22,7 @@ Sigue estos pasos **exactos** para encender la web en tu ordenador. Necesitas do
 1. Abre **Visual Studio Code**.
 2. Ve a `Archivo` → `Abrir carpeta...` (o `File` → `Open Folder...`).
 3. Navega hasta tu escritorio y abre la carpeta **"Pagina web setups"**.
-4. Deberías ver en el explorador de la izquierda: `backend/`, `frontend/`, `.gitignore`, `README.md`, etc.
+4. Deberías ver en el explorador de la izquierda: `backend/`, `backend/frontend/`, `.gitignore`, `README.md`, etc.
 
 ---
 
@@ -94,7 +94,7 @@ Si ves eso, **el backend está encendido**. **NO cierres esta terminal.** Déjal
 2. En esa nueva terminal, escribe:
 
 ```
-cd frontend
+cd backend/frontend
 ```
 ```
 npm install
@@ -156,7 +156,7 @@ npm start
 
 **Terminal 2:**
 ```
-cd frontend
+cd backend/frontend
 npm start
 ```
 

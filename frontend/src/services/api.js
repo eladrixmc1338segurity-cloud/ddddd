@@ -1,10 +1,16 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.REACT_APP_API_URL || '/api';
+export const api = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
 
 // Maps
 export const getAllMaps = (category, search) => {
-  let url = `${API_URL}/maps`;
+  let url = '/maps';
   const params = new URLSearchParams();
   
   if (category) params.append('category', category);
@@ -12,94 +18,122 @@ export const getAllMaps = (category, search) => {
   
   if (params.toString()) url += `?${params}`;
   
-  return axios.get(url);
+  return api.get(url);
 };
 
 export const getMapById = (id) => {
-  return axios.get(`${API_URL}/maps/${id}`);
+  return api.get(`/maps/${id}`);
+};
+
+export const getReviews = (mapId) => {
+  return api.get(`/reviews/map/${mapId}`);
+};
+
+export const createReview = (mapId, review) => {
+  return api.post(`/reviews/map/${mapId}`, review);
+};
+
+export const getReviewsForOwner = () => {
+  return api.get('/reviews');
+};
+
+export const updateReviewStatus = (reviewId, isActive) => {
+  return api.put(`/reviews/${reviewId}`, { isActive });
+};
+
+export const deleteReview = (reviewId) => {
+  return api.delete(`/reviews/${reviewId}`);
 };
 
 export const createMap = (mapData) => {
-  return axios.post(`${API_URL}/maps`, mapData);
+  return api.post('/maps', mapData);
 };
 
 export const updateMap = (id, mapData) => {
-  return axios.put(`${API_URL}/maps/${id}`, mapData);
+  return api.put(`/maps/${id}`, mapData);
 };
 
 export const deleteMap = (id) => {
-  return axios.delete(`${API_URL}/maps/${id}`);
+  return api.delete(`/maps/${id}`);
 };
 
 // Users
 export const getAllUsers = () => {
-  return axios.get(`${API_URL}/users`);
+  return api.get('/users');
 };
 
 export const getUserById = (id) => {
-  return axios.get(`${API_URL}/users/${id}`);
+  return api.get(`/users/${id}`);
 };
 
 export const getUserPermissions = (id) => {
-  return axios.get(`${API_URL}/users/${id}/permissions`);
+  return api.get(`/users/${id}/permissions`);
 };
 
 export const updateUserPermissions = (id, permissions) => {
-  return axios.put(`${API_URL}/users/${id}/permissions`, { permissions });
+  return api.put(`/users/${id}/permissions`, { permissions });
 };
 
 export const updateUserRole = (id, role) => {
-  return axios.put(`${API_URL}/users/${id}/role`, { role });
+  return api.put(`/users/${id}/role`, { role });
 };
 
 export const deactivateUser = (id) => {
-  return axios.put(`${API_URL}/users/${id}/deactivate`);
+  return api.put(`/users/${id}/deactivate`);
 };
 
 export const activateUser = (id) => {
-  return axios.put(`${API_URL}/users/${id}/activate`);
+  return api.put(`/users/${id}/activate`);
 };
 
 // Estadísticas públicas
 export const getStats = () => {
-  return axios.get(`${API_URL}/stats`);
+  return api.get('/stats');
 };
 
 // Monetización
 export const getMonetization = () => {
-  return axios.get(`${API_URL}/monetization`);
+  return api.get('/monetization');
 };
 
 export const updateMonetization = (data) => {
-  return axios.put(`${API_URL}/monetization`, data);
+  return api.put('/monetization', data);
 };
 
 // Perfil
 export const updateProfile = (data) => {
-  return axios.put(`${API_URL}/auth/profile`, data);
+  return api.put('/auth/profile', data);
 };
 
 // Claves de admin
 export const verifyAdminKey = (key) => {
-  return axios.post(`${API_URL}/admin-keys/verify`, { key });
+  return api.post('/admin-keys/verify', { key });
+};
+
+export const setAdminAccessToken = (token) => {
+  if (token) {
+    api.defaults.headers.common['X-Admin-Access-Token'] = token;
+  } else {
+    delete api.defaults.headers.common['X-Admin-Access-Token'];
+  }
 };
 
 export const getAdminKeys = () => {
-  return axios.get(`${API_URL}/admin-keys`);
+  return api.get('/admin-keys');
 };
 
 export const getAccessLog = () => {
-  return axios.get(`${API_URL}/admin-keys/log`);
+  return api.get('/admin-keys/log');
 };
 
 export const assignAdminKey = (userId) => {
-  return axios.post(`${API_URL}/admin-keys/assign`, { userId });
+  return api.post('/admin-keys/assign', { userId });
 };
 
 export const regenerateAdminKey = (userId) => {
-  return axios.put(`${API_URL}/admin-keys/regenerate/${userId}`);
+  return api.put(`/admin-keys/regenerate/${userId}`);
 };
 
 export const revokeAdminKey = (userId) => {
-  return axios.delete(`${API_URL}/admin-keys/revoke/${userId}`);
+  return api.delete(`/admin-keys/revoke/${userId}`);
 };

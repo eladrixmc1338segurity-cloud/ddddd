@@ -1,5 +1,6 @@
 import React, { useState, useEffect, createContext } from 'react';
 import axios from 'axios';
+import { api } from '../services/api';
 
 export const AuthContext = createContext();
 
@@ -8,12 +9,15 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem('authToken'));
 
-  // Configurar interceptor de axios
+  // Configurar interceptor de axios y api
   useEffect(() => {
     if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      const authHeader = `Bearer ${token}`;
+      axios.defaults.headers.common['Authorization'] = authHeader;
+      api.defaults.headers.common['Authorization'] = authHeader;
     } else {
       delete axios.defaults.headers.common['Authorization'];
+      delete api.defaults.headers.common['Authorization'];
     }
   }, [token]);
 

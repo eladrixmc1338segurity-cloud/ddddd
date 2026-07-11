@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { protect, authorize } = require('../middleware/auth');
+const { protect, authorizeAdminAccess } = require('../middleware/auth');
 
+const OWNER_EMAIL = process.env.ADMIN_EMAIL || 'eladrixmc1338.segurity@gmail.com';
 const PERMISSION_FIELDS = ['canUploadMaps', 'canDeleteMaps', 'canEditUsers', 'canManageChannels'];
 
-// GET - Obtener todos los usuarios (solo admin)
-router.get('/', protect, authorize('admin'), (req, res) => {
+// GET - Obtener todos los usuarios (solo admin con clave verificada)
+router.get('/', protect, authorizeAdminAccess, (req, res) => {
   const db = req.app.locals.db;
 
   db.all('SELECT id, email, username, role, isActive, lastLogin, createdAt FROM users', [], (err, users) => {
@@ -21,8 +22,8 @@ router.get('/', protect, authorize('admin'), (req, res) => {
   });
 });
 
-// PUT - Cambiar rol de usuario (solo admin)
-router.put('/:id/role', protect, authorize('admin'), (req, res) => {
+// PUT - Cambiar rol de usuario (solo admin con clave verificada)
+router.put('/:id/role', protect, authorizeAdminAccess, (req, res) => {
   const { id } = req.params;
   const { role } = req.body;
   const db = req.app.locals.db;
@@ -43,11 +44,17 @@ router.put('/:id/role', protect, authorize('admin'), (req, res) => {
   }
 
   // Proteger al Owner: solo el owner puede modificar a otro owner
-  db.get('SELECT role FROM users WHERE id = ?', [id], (lookupErr, target) => {
+  db.get('SELECT email, role FROM users WHERE id = ?', [id], (lookupErr, target) => {
     if (lookupErr) return res.status(500).json({ success: false, message: lookupErr.message });
     if (!target) return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
     if (target.role === 'owner' && req.user.role !== 'owner') {
       return res.status(403).json({ success: false, message: 'No puedes modificar al Owner' });
+    }
+    if (target.email === OWNER_EMAIL && role !== 'owner') {
+      return res.status(403).json({
+        success: false,
+        message: 'El Owner principal no puede perder su rol de Owner'
+      });
     }
 
     db.run('UPDATE users SET role = ? WHERE id = ?', [role, id], function(err) {
@@ -63,8 +70,8 @@ router.put('/:id/role', protect, authorize('admin'), (req, res) => {
   });
 });
 
-// PUT - Desactivar usuario (solo admin)
-router.put('/:id/deactivate', protect, authorize('admin'), (req, res) => {
+// PUT - Desactivar usuario (solo admin con clave verificada)
+router.put('/:id/deactivate', protect, authorizeAdminAccess, (req, res) => {
   const { id } = req.params;
   const db = req.app.locals.db;
 
@@ -95,8 +102,8 @@ router.put('/:id/deactivate', protect, authorize('admin'), (req, res) => {
   });
 });
 
-// PUT - Reactivar usuario (solo admin)
-router.put('/:id/activate', protect, authorize('admin'), (req, res) => {
+// PUT - Reactivar usuario (solo admin con clave verificada)
+router.put('/:id/activate', protect, authorizeAdminAccess, (req, res) => {
   const { id } = req.params;
   const db = req.app.locals.db;
 
@@ -112,8 +119,8 @@ router.put('/:id/activate', protect, authorize('admin'), (req, res) => {
   });
 });
 
-// GET - Obtener permisos de un usuario (solo admin)
-router.get('/:id/permissions', protect, authorize('admin'), (req, res) => {
+// GET - Obtener permisos de un usuario (solo admin con clave verificada)
+router.get('/:id/permissions', protect, authorizeAdminAccess, (req, res) => {
   const { id } = req.params;
   const db = req.app.locals.db;
 
@@ -131,8 +138,8 @@ router.get('/:id/permissions', protect, authorize('admin'), (req, res) => {
   });
 });
 
-// PUT - Actualizar permisos de un usuario (solo admin)
-router.put('/:id/permissions', protect, authorize('admin'), (req, res) => {
+// PUT - Actualizar permisos de un usuario (solo admin con clave verificada)
+router.put('/:id/permissions', protect, authorizeAdminAccess, (req, res) => {
   const { id } = req.params;
   const { permissions } = req.body;
   const db = req.app.locals.db;

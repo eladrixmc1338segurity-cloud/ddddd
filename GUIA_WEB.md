@@ -1,70 +1,102 @@
-# 🌐 Guía: Hostear la web en internet (hosting online)
+# 🌐 Guía: Hostear la web en Render con GitHub
 
-Esta guía explica cómo publicar la plataforma para que cualquiera pueda entrar desde internet. La app tiene **dos partes** que se despliegan por separado:
+Si quieres publicar esta plataforma usando solo Render y GitHub, sigue esta guía. La app tiene dos partes:
 
-- **Frontend (React):** se sube a un hosting de webs estáticas (Vercel, Netlify…).
-- **Backend (Node + SQLite):** se sube a un servidor que ejecuta Node (Render, Railway…).
+- **Backend (Node + Express + SQLite):** se sube como un servicio web en Render.
+- **Frontend (React):** se sube como un sitio estático en Render.
 
-> Recomendado por ser gratis y sencillo: **Frontend en Vercel** + **Backend en Render**.
+> Importante: en este proyecto el frontend no está en la raíz; está dentro de la carpeta `backend/frontend`.
 
 ---
 
-## 1. Subir el BACKEND (Render)
+## 1. Sube el proyecto a GitHub
 
-1. Crea una cuenta en <https://render.com> y conéctala a tu GitHub.
-2. **New → Web Service** y elige tu repositorio.
-3. Configuración:
+1. Crea un repositorio nuevo en GitHub.
+2. Sube toda la carpeta del proyecto, incluyendo:
+   - `backend/`
+   - `README.md`
+   - `GUIA_PC.md`
+   - `GUIA_WEB.md`
+3. Asegúrate de que el repositorio tenga la carpeta `backend/frontend`.
+
+---
+
+## 2. Publicar el BACKEND en Render
+
+1. Entra a <https://render.com> y crea una cuenta.
+2. Haz clic en **New** → **Web Service**.
+3. Conecta tu cuenta de GitHub y selecciona el repositorio.
+4. En la configuración usa esto:
    - **Root Directory:** `backend`
    - **Build Command:** `npm install`
    - **Start Command:** `npm start`
-4. En **Environment** añade las variables (las mismas del `.env`):
+5. En **Environment Variables** añade estas variables:
    ```
    NODE_ENV=production
    JWT_SECRET=pon_una_clave_larga_y_secreta
    JWT_EXPIRE=7d
    ADMIN_EMAIL=admin@tudominio.com
    ADMIN_PASSWORD=una_contraseña_fuerte
-   FRONTEND_URL=https://TU-FRONTEND.vercel.app
+   FRONTEND_URL=https://tu-frontend.onrender.com
    ```
-   > No definas `PORT`: Render lo asigna solo y el código ya usa `process.env.PORT`.
-5. Crea el servicio. Cuando termine, copia la URL pública (algo como `https://tu-backend.onrender.com`).
+6. Pulsa **Create Web Service**.
+7. Cuando termineInvoke-WebRequest https://tu-backend.onrender.com/api/health | Select-Object -Expand Content, Render te dará una URL pública como:
+   ```
+   https://tu-backend.onrender.com
+   ```
 
-> ⚠️ **Nota sobre SQLite:** en planes gratuitos el disco puede reiniciarse y borrar `database.db`. Para un proyecto serio conviene usar una base de datos persistente o un disco persistente del proveedor. Para pruebas, SQLite funciona bien.
+> No necesitas definir `PORT`; Render lo asigna automáticamente.
 
 ---
 
-## 2. Subir el FRONTEND (Vercel)
+## 3. Publicar el FRONTEND en Render
 
-1. Crea una cuenta en <https://vercel.com> y conéctala a tu GitHub.
-2. **Add New → Project** y elige tu repositorio.
-3. Configuración:
-   - **Root Directory:** `frontend`
-   - **Framework Preset:** Create React App (se detecta solo).
+1. En Render, haz clic en **New** → **Static Site**.
+2. Conecta el mismo repositorio de GitHub.
+3. En la configuración usa esto:
+   - **Root Directory:** `backend/frontend`
+   - **Build Command:** `npm install && npm run build`
+   - **Publish Directory:** `build`
 4. En **Environment Variables** añade:
    ```
    REACT_APP_API_URL=https://tu-backend.onrender.com/api
    ```
-   (la URL del backend del paso 1, terminada en `/api`).
-5. Pulsa **Deploy**. Al terminar tendrás una URL como `https://tu-frontend.vercel.app`.
+   (usa la URL del backend del paso 2, terminada en `/api`).
+5. Pulsa **Create Static Site**.
+6. Render te dará una URL pública como:
+   ```
+   https://tu-frontend.onrender.com
+   ```
 
 ---
 
-## 3. Conectar las dos partes
+## 4. Conectar las dos partes
 
-1. Vuelve a Render y asegúrate de que `FRONTEND_URL` es exactamente la URL de Vercel (para que CORS funcione).
-2. Guarda y deja que el backend se reinicie.
-3. Abre tu URL de Vercel: la web ya debería cargar las estadísticas y permitir registro/login.
+1. Vuelve al servicio del backend en Render.
+2. Cambia `FRONTEND_URL` por la URL exacta del frontend que acabas de crear.
+3. Guarda y espera a que Render redeploye el backend.
+4. Abre la URL del frontend y prueba entrar a la web.
 
 ---
 
 ## ✅ Comprobación final
 
-- Abre `https://tu-backend.onrender.com/api/health` → debe responder `{"success":true,...}`.
-- Abre tu web de Vercel y crea una cuenta.
-- Entra al panel admin con el `ADMIN_EMAIL`/`ADMIN_PASSWORD` que pusiste en Render (mira **[GUIA_USO.md](./GUIA_USO.md)**).
+- Abre esta URL del backend:
+  ```
+  https://tu-backend.onrender.com/api/health
+  ```
+  Debe responder algo como:
+  ```json
+  {"success":true,"message":"Servidor funcionando correctamente"}
+  ```
+- Abre la URL del frontend y prueba registrarte o iniciar sesión.
+- Para entrar al panel admin, usa el `ADMIN_EMAIL` y `ADMIN_PASSWORD` que pusiste en Render.
+
+---
 
 ## ❓ Problemas comunes
 
-- **La web carga pero no trae datos:** revisa que `REACT_APP_API_URL` apunte al backend correcto y termine en `/api`.
-- **Error de CORS en la consola:** `FRONTEND_URL` en el backend no coincide con la URL real del frontend.
-- **El admin no se crea:** usa un `ADMIN_EMAIL` que no exista ya como usuario.
+- **La web se ve vacía o no carga datos:** revisa que `REACT_APP_API_URL` sea correcto y termine en `/api`.
+- **Error de CORS:** `FRONTEND_URL` en el backend no coincide con la URL real del frontend.
+- **El admin no se crea:** usa un correo que no exista ya como usuario.
+- **Las rutas del frontend dan 404 al recargar:** en Render, activa la opción de SPA rewrite o usa un redirect a `index.html` en el sitio estático.

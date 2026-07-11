@@ -29,7 +29,7 @@ npm start
 
 ```bash
 # Terminal 2 - Frontend
-cd frontend
+cd backend/frontend
 npm install
 npm start
 ```

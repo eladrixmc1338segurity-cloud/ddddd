@@ -1,0 +1,994 @@
+import React, { useState, useEffect, useContext, useRef } from 'react';
+import { AuthContext } from '../context/AuthContext';
+import {
+  getAllUsers,
+  getAllMaps,
+  updateUserRole,
+  deactivateUser,
+  activateUser,
+  getUserPermissions,
+  updateUserPermissions,
+  deleteMap,
+  createMap,
+  getMonetization,
+  updateMonetization,
+  verifyAdminKey,
+  setAdminAccessToken,
+  getAdminKeys,
+  getAccessLog,
+  assignAdminKey,
+  regenerateAdminKey,
+  revokeAdminKey,
+  getReviewsForOwner,
+  updateReviewStatus,
+  deleteReview
+} from '../services/api';
+import '../styles/admin.css';
+
+const PERMISSION_LABELS = {
+  canUploadMaps: 'Subir recursos',
+  canDeleteMaps: 'Eliminar recursos',
+  canEditUsers: 'Editar usuarios',
+  canManageChannels: 'Gestionar canales'
+};
+
+const emptyPermissions = {
+  canUploadMaps: false,
+  canDeleteMaps: false,
+  canEditUsers: false,
+  canManageChannels: false
+};
+
+const emptyMonetization = {
+  paypalUrl: '',
+  kofiUrl: '',
+  patreonUrl: '',
+  discordUrl: '',
+  customLinks: [],
+  bannerEnabled: false,
+  bannerText: '',
+  bannerLink: '',
+  bannerImage: ''
+};
+
+const AdminPanel = () => {
+  const { user } = useContext(AuthContext);
+  const [activeTab, setActiveTab] = useState('maps');
+  const [maps, setMaps] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [newMap, setNewMap] = useState({
+    name: '',
+    description: '',
+    category: 'Mapas',
+    fileUrl: '',
+    fileName: '',
+    imageUrls: ''
+  });
+
+  const [monetization, setMonetization] = useState(emptyMonetization);
+  const [monetizationMsg, setMonetizationMsg] = useState('');
+  const [savingMonetization, setSavingMonetization] = useState(false);
+
+  const [permsUserId, setPermsUserId] = useState(null);
+  const [permsData, setPermsData] = useState(emptyPermissions);
+  const [permsMsg, setPermsMsg] = useState('');
+  const [savingPerms, setSavingPerms] = useState(false);
+  const latestPermsRequest = useRef(null);
+
+  // Verificación de clave secreta (solo admins, no owner)
+  const [keyVerified, setKeyVerified] = useState(false);
+  const [keyInput, setKeyInput] = useState('');
+  const [keyError, setKeyError] = useState('');
+  const [keyLoading, setKeyLoading] = useState(false);
+
+  // Claves de admins (solo owner)
+  const [adminsList, setAdminsList] = useState([]);
+  const [accessLog, setAccessLog] = useState([]);
+  const [newKeyResult, setNewKeyResult] = useState(null);
+  const [keysLoading, setKeysLoading] = useState(false);
+
+  const [reviews, setReviews] = useState([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewActionMsg, setReviewActionMsg] = useState('');
+
+  useEffect(() => {
+    if (activeTab === 'maps') {
+      fetchMaps();
+    } else if (activeTab === 'users') {
+      fetchUsers();
+    } else if (activeTab === 'monetization') {
+      fetchMonetization();
+    } else if (activeTab === 'keys') {
+      fetchAdminKeys();
+      fetchAccessLog();
+    } else if (activeTab === 'reviews') {
+      fetchOwnerReviews();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    setAdminAccessToken(null);
+    setKeyVerified(false);
+
+    return () => {
+      setAdminAccessToken(null);
+      setKeyVerified(false);
+    };
+  }, []);
+
+  const handleVerifyKey = async () => {
+    setKeyLoading(true);
+    setKeyError('');
+    try {
+      const response = await verifyAdminKey(keyInput);
+      const token = response.data?.accessToken;
+      if (token) {
+        setAdminAccessToken(token);
+      }
+      setKeyVerified(true);
+    } catch (error) {
+      setKeyError(error.response?.data?.message || 'Error al verificar la clave');
+    } finally {
+      setKeyLoading(false);
+    }
+  };
+
+  const fetchAdminKeys = async () => {
+    setKeysLoading(true);
+    try {
+      const response = await getAdminKeys();
+      setAdminsList(response.data.admins || []);
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setKeysLoading(false);
+    }
+  };
+
+  const fetchOwnerReviews = async () => {
+    setReviewActionMsg('');
+    setReviewsLoading(true);
+    try {
+      const response = await getReviewsForOwner();
+      setReviews(response.data.reviews || []);
+    } catch (error) {
+      console.error('Error fetching owner reviews:', error);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  const updateReviewActiveState = async (reviewId, isActive) => {
+    try {
+      await updateReviewStatus(reviewId, isActive);
+      setReviewActionMsg('Estado de reseña actualizado');
+      fetchOwnerReviews();
+    } catch (error) {
+      setReviewActionMsg('No se pudo actualizar la reseña');
+      console.error('Error:', error);
+    }
+  };
+
+  const handleDeleteReview = async (reviewId) => {
+    if (!window.confirm('¿Eliminar esta reseña permanentemente?')) return;
+    try {
+      await deleteReview(reviewId);
+      setReviewActionMsg('Reseña eliminada');
+      fetchOwnerReviews();
+    } catch (error) {
+      setReviewActionMsg('No se pudo eliminar la reseña');
+      console.error('Error:', error);
+    }
+  };
+
+  const fetchAccessLog = async () => {
+    try {
+      const response = await getAccessLog();
+      setAccessLog(response.data.log || []);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  const handleAssignKey = async (userId) => {
+    try {
+      const response = await assignAdminKey(userId);
+      setNewKeyResult({ key: response.data.key, username: response.data.username });
+      fetchAdminKeys();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Error al asignar clave');
+    }
+  };
+
+  const handleRegenerateKey = async (userId) => {
+    if (!window.confirm('¿Regenerar la clave? La anterior dejará de funcionar.')) return;
+    try {
+      const response = await regenerateAdminKey(userId);
+      setNewKeyResult({ key: response.data.key, username: response.data.username });
+      fetchAdminKeys();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Error al regenerar clave');
+    }
+  };
+
+  const handleRevokeKey = async (userId) => {
+    if (!window.confirm('¿Revocar la clave? El admin no podrá entrar al panel.')) return;
+    try {
+      await revokeAdminKey(userId);
+      setNewKeyResult(null);
+      fetchAdminKeys();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Error al revocar clave');
+    }
+  };
+
+  const fetchMaps = async () => {
+    setLoading(true);
+    try {
+      const response = await getAllMaps();
+      setMaps(response.data.maps || []);
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const response = await getAllUsers();
+      setUsers(response.data.users || []);
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchMonetization = async () => {
+    setLoading(true);
+    try {
+      const response = await getMonetization();
+      setMonetization({ ...emptyMonetization, ...response.data.monetization });
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateMap = async (e) => {
+    e.preventDefault();
+    const images = newMap.imageUrls
+      .split(',')
+      .map((url) => url.trim())
+      .filter((url) => url);
+
+    if (!newMap.name || !newMap.description || !newMap.fileUrl) {
+      alert('Completa nombre, descripción y URL del archivo');
+      return;
+    }
+
+    if (images.length < 1) {
+      alert('Debes incluir al menos una foto (URL) para publicar.');
+      return;
+    }
+
+    if (images.length > 15) {
+      alert('No puedes incluir más de 15 fotos.');
+      return;
+    }
+
+    try {
+      await createMap({ ...newMap, images });
+      setNewMap({ name: '', description: '', category: 'Mapas', fileUrl: '', fileName: '', imageUrls: '' });
+      fetchMaps();
+    } catch (error) {
+      console.error('Error:', error);
+      alert(error.response?.data?.message || 'Error al crear el mapa');
+    }
+  };
+
+  const handleDeleteMap = async (id) => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar este mapa?')) {
+      try {
+        await deleteMap(id);
+        setMaps(maps.filter(m => m.id !== id));
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+  };
+
+  const handleChangeRole = async (userId, role) => {
+    try {
+      await updateUserRole(userId, role);
+      fetchUsers();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Error al cambiar el rol');
+    }
+  };
+
+  const handleToggleActive = async (u) => {
+    try {
+      if (u.isActive) {
+        await deactivateUser(u.id);
+      } else {
+        await activateUser(u.id);
+      }
+      fetchUsers();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Error al cambiar el estado');
+    }
+  };
+
+  const openPermissions = async (userId) => {
+    if (permsUserId === userId) {
+      setPermsUserId(null);
+      latestPermsRequest.current = null;
+      return;
+    }
+    setPermsMsg('');
+    setPermsUserId(userId);
+    setPermsData(emptyPermissions);
+    latestPermsRequest.current = userId;
+    try {
+      const response = await getUserPermissions(userId);
+      // Ignorar respuestas obsoletas si el admin abrió otro usuario mientras tanto
+      if (latestPermsRequest.current !== userId) return;
+      setPermsData({ ...emptyPermissions, ...response.data.permissions });
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  const handlePermChange = (field) => {
+    setPermsData(prev => ({ ...prev, [field]: !prev[field] }));
+  };
+
+  const handleSavePermissions = async () => {
+    setSavingPerms(true);
+    setPermsMsg('');
+    try {
+      await updateUserPermissions(permsUserId, permsData);
+      setPermsMsg('✅ Permisos guardados');
+    } catch (error) {
+      setPermsMsg('❌ ' + (error.response?.data?.message || 'Error al guardar'));
+    } finally {
+      setSavingPerms(false);
+    }
+  };
+
+  const handleMonetizationChange = (field, value) => {
+    setMonetization(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleCustomLinkChange = (index, key, value) => {
+    setMonetization(prev => {
+      const customLinks = [...(prev.customLinks || [])];
+      customLinks[index] = { ...customLinks[index], [key]: value };
+      return { ...prev, customLinks };
+    });
+  };
+
+  const addCustomLink = () => {
+    setMonetization(prev => ({
+      ...prev,
+      customLinks: [...(prev.customLinks || []), { label: '', url: '' }]
+    }));
+  };
+
+  const removeCustomLink = (index) => {
+    setMonetization(prev => ({
+      ...prev,
+      customLinks: (prev.customLinks || []).filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleSaveMonetization = async (e) => {
+    e.preventDefault();
+    setSavingMonetization(true);
+    setMonetizationMsg('');
+    try {
+      await updateMonetization(monetization);
+      setMonetizationMsg('✅ Configuración guardada correctamente');
+    } catch (error) {
+      setMonetizationMsg('❌ ' + (error.response?.data?.message || 'Error al guardar'));
+    } finally {
+      setSavingMonetization(false);
+    }
+  };
+
+  if (user?.role !== 'admin' && user?.role !== 'owner') {
+    return (
+      <div className="admin-access-denied">
+        <h2>Acceso Denegado</h2>
+        <p>No tienes permisos para acceder al panel de administrador</p>
+      </div>
+    );
+  }
+
+  // Admins (no owner) necesitan verificar su clave secreta
+  if (user?.role === 'admin' && !keyVerified) {
+    return (
+      <div className="admin-panel fade-in">
+        <div className="admin-header">
+          <h1>🔐 Verificación de Seguridad</h1>
+          <p>Introduce tu clave secreta de administrador para acceder al panel</p>
+        </div>
+        <div className="key-verify-box">
+          <input
+            type="password"
+            placeholder="Clave secreta..."
+            value={keyInput}
+            onChange={(e) => setKeyInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleVerifyKey()}
+            className="key-input"
+          />
+          <button
+            className="btn-upload"
+            onClick={handleVerifyKey}
+            disabled={keyLoading || !keyInput}
+          >
+            {keyLoading ? 'Verificando...' : 'Acceder al panel'}
+          </button>
+          {keyError && <div className="key-error">{keyError}</div>}
+          <p className="key-help">Si no tienes clave, contacta con el Owner del sistema.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="admin-panel fade-in">
+      <div className="admin-header">
+        <h1>🔐 Panel de Administrador</h1>
+        <p>Gestiona mapas, usuarios, monetización y permisos del sistema</p>
+      </div>
+
+      <div className="admin-tabs">
+        <button
+          className={`tab-btn ${activeTab === 'maps' ? 'active' : ''}`}
+          onClick={() => setActiveTab('maps')}
+        >
+          📦 Gestión
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
+          onClick={() => setActiveTab('users')}
+        >
+          👥 Gestionar Usuarios
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'monetization' ? 'active' : ''}`}
+          onClick={() => setActiveTab('monetization')}
+        >
+          💰 Monetización
+        </button>
+        {user?.role === 'owner' && (
+          <button
+            className={`tab-btn ${activeTab === 'keys' ? 'active' : ''}`}
+            onClick={() => setActiveTab('keys')}
+          >
+            🔑 Claves de Admins
+          </button>
+        )}
+        {user?.role === 'owner' && (
+          <button
+            className={`tab-btn ${activeTab === 'reviews' ? 'active' : ''}`}
+            onClick={() => setActiveTab('reviews')}
+          >
+            ⭐ Reseñas
+          </button>
+        )}
+      </div>
+
+      <div className="admin-content">
+        {activeTab === 'maps' && (
+          <div className="maps-management">
+            <h2>Gestión de Mapas</h2>
+
+            <div className="upload-section">
+              <h3>Subir Nuevo Mapa</h3>
+              <form className="upload-form" onSubmit={handleCreateMap}>
+                <input
+                  type="text"
+                  placeholder="Nombre del mapa"
+                  value={newMap.name}
+                  onChange={(e) => setNewMap({ ...newMap, name: e.target.value })}
+                />
+                <textarea
+                  placeholder="Descripción"
+                  value={newMap.description}
+                  onChange={(e) => setNewMap({ ...newMap, description: e.target.value })}
+                />
+                <select
+                  value={newMap.category}
+                  onChange={(e) => setNewMap({ ...newMap, category: e.target.value })}
+                >
+                  <option>Configuraciones</option>
+                  <option>Setups</option>
+                  <option>Mapas</option>
+                  <option>Schematics</option>
+                  <option>Otros</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="URL del archivo"
+                  value={newMap.fileUrl}
+                  onChange={(e) => setNewMap({ ...newMap, fileUrl: e.target.value })}
+                />
+                <input
+                  type="text"
+                  placeholder="URLs de fotos (separadas por comas, min 1 max 15)"
+                  value={newMap.imageUrls}
+                  onChange={(e) => setNewMap({ ...newMap, imageUrls: e.target.value })}
+                />
+                <small className="form-note">
+                  Agrega entre 1 y 15 imágenes. Separa cada URL con una coma.
+                </small>
+                <button type="submit" className="btn-upload">Subir Mapa</button>
+              </form>
+            </div>
+
+            <div className="maps-list">
+              <h3>Mapas Actuales ({maps.length})</h3>
+              {loading ? (
+                <p>Cargando...</p>
+              ) : maps.length > 0 ? (
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>Categoría</th>
+                      <th>Uploader</th>
+                      <th>Descargas</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {maps.map(map => (
+                      <tr key={map.id}>
+                        <td><strong>{map.name}</strong></td>
+                        <td>{map.category}</td>
+                        <td>{map.uploaderName || 'N/A'}</td>
+                        <td>{map.downloadCount}</td>
+                        <td>
+                          <button
+                            className="btn-action-delete"
+                            onClick={() => handleDeleteMap(map.id)}
+                          >
+                            Eliminar
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p>No hay mapas</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'users' && (
+          <div className="users-management">
+            <h2>Gestión de Usuarios</h2>
+
+            {loading ? (
+              <p>Cargando...</p>
+            ) : users.length > 0 ? (
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Usuario</th>
+                    <th>Email</th>
+                    <th>Rol</th>
+                    <th>Estado</th>
+                    <th>Último Login</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map(u => (
+                    <tr key={u.id}>
+                      <td><strong>{u.username}</strong></td>
+                      <td>{u.email}</td>
+                      <td>
+                        <span className={`role-badge ${u.role}`}>
+                          {u.role.toUpperCase()}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`status-badge ${u.isActive ? 'active' : 'inactive'}`}>
+                          {u.isActive ? 'Activo' : 'Inactivo'}
+                        </span>
+                      </td>
+                      <td>{u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : 'N/A'}</td>
+                      <td>
+                        <div className="user-actions">
+                          {u.role === 'admin' ? (
+                            u.id !== user.id && (
+                              <button
+                                className="btn-action-demote"
+                                onClick={() => handleChangeRole(u.id, 'user')}
+                              >
+                                Quitar admin
+                              </button>
+                            )
+                          ) : (
+                            <button
+                              className="btn-action-promote"
+                              onClick={() => handleChangeRole(u.id, 'admin')}
+                            >
+                              Promover a admin
+                            </button>
+                          )}
+                          {u.id !== user.id && (
+                            <button
+                              className={u.isActive ? 'btn-action-deactivate' : 'btn-action-activate'}
+                              onClick={() => handleToggleActive(u)}
+                            >
+                              {u.isActive ? 'Desactivar' : 'Activar'}
+                            </button>
+                          )}
+                          <button
+                            className="btn-action-perms"
+                            onClick={() => openPermissions(u.id)}
+                          >
+                            {permsUserId === u.id ? 'Cerrar permisos' : 'Permisos'}
+                          </button>
+                        </div>
+
+                        {permsUserId === u.id && (
+                          <div className="perms-panel">
+                            <h4>Permisos de {u.username}</h4>
+                            <div className="perms-grid">
+                              {Object.keys(PERMISSION_LABELS).map(field => (
+                                <label key={field} className="checkbox-label">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!permsData[field]}
+                                    onChange={() => handlePermChange(field)}
+                                  />
+                                  {PERMISSION_LABELS[field]}
+                                </label>
+                              ))}
+                            </div>
+                            {permsMsg && <div className="perms-msg">{permsMsg}</div>}
+                            <button
+                              className="btn-upload"
+                              onClick={handleSavePermissions}
+                              disabled={savingPerms}
+                            >
+                              {savingPerms ? 'Guardando...' : 'Guardar permisos'}
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p>No hay usuarios</p>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'reviews' && user?.role === 'owner' && (
+          <div className="reviews-management">
+            <h2>Gestión de Reseñas</h2>
+            <p>Revisa y administra los comentarios dejados por los usuarios.</p>
+            {reviewActionMsg && <div className="review-action-msg">{reviewActionMsg}</div>}
+            {reviewsLoading ? (
+              <p>Cargando reseñas...</p>
+            ) : reviews.length > 0 ? (
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Mapa</th>
+                    <th>Usuario</th>
+                    <th>Calificación</th>
+                    <th>Comentario</th>
+                    <th>Activo</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reviews.map(review => (
+                    <tr key={review.id}>
+                      <td>{review.mapName}</td>
+                      <td>{review.username}</td>
+                      <td>{'⭐'.repeat(review.rating)}</td>
+                      <td>{review.comment}</td>
+                      <td>{review.isActive ? 'Sí' : 'No'}</td>
+                      <td>
+                        <button
+                          className="btn-action-toggle"
+                          onClick={() => updateReviewActiveState(review.id, !review.isActive)}
+                        >
+                          {review.isActive ? 'Desactivar' : 'Activar'}
+                        </button>
+                        <button
+                          className="btn-action-delete"
+                          onClick={() => handleDeleteReview(review.id)}
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p>No hay reseñas registradas.</p>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'monetization' && (
+          <div className="monetization-management">
+            <h2>Monetización</h2>
+            <p className="monetization-intro">
+              Configura los enlaces de donación/compra y el banner promocional que se mostrarán
+              en la página de inicio.
+            </p>
+
+            {monetizationMsg && <div className="monetization-msg">{monetizationMsg}</div>}
+
+            <form className="monetization-form" onSubmit={handleSaveMonetization}>
+              <fieldset className="monetization-fieldset">
+                <legend>Enlaces de donación / compra</legend>
+
+                <label>PayPal</label>
+                <input
+                  type="text"
+                  placeholder="https://paypal.me/tuusuario"
+                  value={monetization.paypalUrl}
+                  onChange={(e) => handleMonetizationChange('paypalUrl', e.target.value)}
+                />
+
+                <label>Ko-fi</label>
+                <input
+                  type="text"
+                  placeholder="https://ko-fi.com/tuusuario"
+                  value={monetization.kofiUrl}
+                  onChange={(e) => handleMonetizationChange('kofiUrl', e.target.value)}
+                />
+
+                <label>Patreon</label>
+                <input
+                  type="text"
+                  placeholder="https://patreon.com/tuusuario"
+                  value={monetization.patreonUrl}
+                  onChange={(e) => handleMonetizationChange('patreonUrl', e.target.value)}
+                />
+
+                <label>Discord</label>
+                <input
+                  type="text"
+                  placeholder="https://discord.gg/tuservidor"
+                  value={monetization.discordUrl}
+                  onChange={(e) => handleMonetizationChange('discordUrl', e.target.value)}
+                />
+              </fieldset>
+
+              <fieldset className="monetization-fieldset">
+                <legend>Enlaces personalizados</legend>
+                {(monetization.customLinks || []).map((link, index) => (
+                  <div key={index} className="custom-link-row">
+                    <input
+                      type="text"
+                      placeholder="Texto (ej: 🛒 Tienda)"
+                      value={link.label || ''}
+                      onChange={(e) => handleCustomLinkChange(index, 'label', e.target.value)}
+                    />
+                    <input
+                      type="text"
+                      placeholder="https://..."
+                      value={link.url || ''}
+                      onChange={(e) => handleCustomLinkChange(index, 'url', e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="btn-action-delete"
+                      onClick={() => removeCustomLink(index)}
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className="btn-add-link" onClick={addCustomLink}>
+                  + Añadir enlace
+                </button>
+              </fieldset>
+
+              <fieldset className="monetization-fieldset">
+                <legend>Banner promocional</legend>
+
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={monetization.bannerEnabled}
+                    onChange={(e) => handleMonetizationChange('bannerEnabled', e.target.checked)}
+                  />
+                  Mostrar banner en la página de inicio
+                </label>
+
+                <label>Texto del banner</label>
+                <input
+                  type="text"
+                  placeholder="🔥 ¡Oferta especial! Consigue tu setup premium"
+                  value={monetization.bannerText}
+                  onChange={(e) => handleMonetizationChange('bannerText', e.target.value)}
+                />
+
+                <label>Enlace del banner</label>
+                <input
+                  type="text"
+                  placeholder="https://..."
+                  value={monetization.bannerLink}
+                  onChange={(e) => handleMonetizationChange('bannerLink', e.target.value)}
+                />
+
+                <label>Imagen del banner (URL, opcional)</label>
+                <input
+                  type="text"
+                  placeholder="https://.../imagen.png"
+                  value={monetization.bannerImage}
+                  onChange={(e) => handleMonetizationChange('bannerImage', e.target.value)}
+                />
+              </fieldset>
+
+              <button type="submit" className="btn-upload" disabled={savingMonetization}>
+                {savingMonetization ? 'Guardando...' : 'Guardar configuración'}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {activeTab === 'keys' && (
+          <div className="keys-management">
+            <h2>🔑 Claves de Admins</h2>
+
+            {user?.role !== 'owner' ? (
+              <div className="keys-no-access">
+                <h3>🚫 No tienes acceso a este panel</h3>
+                <p>Solo el Owner (Administrador Principal) puede gestionar las claves secretas.</p>
+              </div>
+            ) : (
+              <>
+                {newKeyResult && (
+                  <div className="key-result-box">
+                    <h3>🔐 Clave generada para: {newKeyResult.username}</h3>
+                    <div className="key-display">
+                      <code>{newKeyResult.key}</code>
+                    </div>
+                    <p className="key-warning">
+                      ⚠️ Copia esta clave y envíasela al administrador. <strong>No se volverá a mostrar.</strong>
+                    </p>
+                    <button className="btn-action-promote" onClick={() => setNewKeyResult(null)}>
+                      Entendido, cerrar
+                    </button>
+                  </div>
+                )}
+
+                <div className="keys-section">
+                  <h3>Administradores y sus claves</h3>
+                  {keysLoading ? (
+                    <p>Cargando...</p>
+                  ) : adminsList.length > 0 ? (
+                    <table className="admin-table">
+                      <thead>
+                        <tr>
+                          <th>Usuario</th>
+                          <th>Email</th>
+                          <th>Rol</th>
+                          <th>Estado de clave</th>
+                          <th>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {adminsList.map(a => (
+                          <tr key={a.id}>
+                            <td>{a.username}</td>
+                            <td>{a.email}</td>
+                            <td>
+                              <span className={`role-badge ${a.role}`}>
+                                {a.role === 'owner' ? 'OWNER' : 'ADMIN'}
+                              </span>
+                            </td>
+                            <td>
+                              {a.role === 'owner' ? (
+                                <span className="status-badge active">No necesita clave</span>
+                              ) : !a.keyId ? (
+                                <span className="status-badge inactive">Sin clave</span>
+                              ) : (
+                                <span className="status-badge active">Activa</span>
+                              )}
+                            </td>
+                            <td>
+                              {a.role !== 'owner' && (
+                                <div className="user-actions">
+                                  {!a.keyId ? (
+                                    <button
+                                      className="btn-action-promote"
+                                      onClick={() => handleAssignKey(a.id)}
+                                    >
+                                      Crear clave
+                                    </button>
+                                  ) : (
+                                    <>
+                                      <button
+                                        className="btn-action-promote"
+                                        onClick={() => handleRegenerateKey(a.id)}
+                                      >
+                                        Regenerar
+                                      </button>
+                                      <button
+                                        className="btn-action-deactivate"
+                                        onClick={() => handleRevokeKey(a.id)}
+                                      >
+                                        Revocar
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p>No hay administradores</p>
+                  )}
+                </div>
+
+                <div className="keys-section">
+                  <h3>📋 Registro de accesos (últimos 100)</h3>
+                  {accessLog.length > 0 ? (
+                    <table className="admin-table access-log-table">
+                      <thead>
+                        <tr>
+                          <th>Fecha</th>
+                          <th>Usuario</th>
+                          <th>Email</th>
+                          <th>IP</th>
+                          <th>Resultado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {accessLog.map(entry => (
+                          <tr key={entry.id}>
+                            <td>{new Date(entry.createdAt).toLocaleString()}</td>
+                            <td>{entry.username}</td>
+                            <td>{entry.email}</td>
+                            <td>{entry.ip || 'N/A'}</td>
+                            <td>
+                              <span className={`status-badge ${entry.success ? 'active' : 'inactive'}`}>
+                                {entry.success ? 'Correcto' : 'Fallido'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <p>No hay registros de acceso todavía</p>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default AdminPanel;

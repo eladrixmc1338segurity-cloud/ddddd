@@ -6,6 +6,13 @@ const { protect, authorize, authorizeOwner } = require('../middleware/auth');
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
+const SESSION_DURATION_MINUTES = 60;
+
+const logAdminAccessAttempt = (db, userId, ip, success) => {
+  db.run('INSERT INTO access_log (userId, ip, success) VALUES (?, ?, ?)', [userId, ip, success ? 1 : 0], (err) => {
+    if (err) console.error('Error registrando intento de acceso administrativo:', err.message);
+  });
+};
 
 // POST - Verificar clave secreta para acceder al panel admin
 router.post('/verify', protect, authorize('admin'), (req, res) => {
@@ -14,7 +21,12 @@ router.post('/verify', protect, authorize('admin'), (req, res) => {
   const userId = req.user.id;
   const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
+  if (req.user.role === 'owner') {
+    return res.status(200).json({ success: true, message: 'Owner no necesita clave secreta' });
+  }
+
   if (!key) {
+    logAdminAccessAttempt(db, userId, ip, false);
     return res.status(400).json({ success: false, message: 'Introduce tu clave secreta' });
   }
 
@@ -38,6 +50,7 @@ router.post('/verify', protect, authorize('admin'), (req, res) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
 
         if (!row) {
+          logAdminAccessAttempt(db, userId, ip, false);
           return res.status(403).json({
             success: false,
             message: 'No tienes una clave secreta asignada. Contacta con el Owner.'
@@ -46,17 +59,26 @@ router.post('/verify', protect, authorize('admin'), (req, res) => {
 
         const valid = await bcrypt.compare(key, row.keyHash);
 
-        // Registrar intento
-        db.run(
-          'INSERT INTO access_log (userId, ip, success) VALUES (?, ?, ?)',
-          [userId, ip, valid ? 1 : 0]
-        );
-
         if (!valid) {
+          logAdminAccessAttempt(db, userId, ip, false);
           return res.status(401).json({ success: false, message: 'Clave secreta incorrecta' });
         }
 
-        res.status(200).json({ success: true, message: 'Acceso concedido' });
+        const accessToken = crypto.randomBytes(24).toString('hex');
+        const expiresAt = new Date(Date.now() + SESSION_DURATION_MINUTES * 60 * 1000).toISOString();
+
+        db.run(
+          'INSERT OR REPLACE INTO admin_access_sessions (userId, accessToken, expiresAt) VALUES (?, ?, ?)',
+          [userId, accessToken, expiresAt],
+          (sessionErr) => {
+            if (sessionErr) {
+              return res.status(500).json({ success: false, message: sessionErr.message });
+            }
+
+            logAdminAccessAttempt(db, userId, ip, true);
+            res.status(200).json({ success: true, message: 'Acceso concedido', accessToken });
+          }
+        );
       });
     }
   );
